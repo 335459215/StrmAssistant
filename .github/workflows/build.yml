@@ -33,10 +33,26 @@ jobs:
       - name: Build the project
         run: dotnet build StrmAssistant/StrmAssistant.csproj --no-restore --configuration Release -p:UseSharedCompilation=false
 
+      - name: Collect plugin output
+        shell: pwsh
+        run: |
+          $src = Join-Path $env:APPDATA 'Emby-Server\programdata\plugins'
+          $dst = Join-Path $env:GITHUB_WORKSPACE 'artifacts'
+          New-Item -ItemType Directory -Force -Path $dst | Out-Null
+          if (-not (Test-Path $src)) {
+            Write-Error "Plugin output directory not found: $src"
+            exit 1
+          }
+          Get-ChildItem -Path $src -Recurse | ForEach-Object { Write-Host $_.FullName }
+          Copy-Item -Path (Join-Path $src '*') -Destination $dst -Recurse -Force
+          Write-Host "Copied to $dst :"
+          Get-ChildItem -Path $dst -Recurse | ForEach-Object { Write-Host $_.FullName }
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: StrmAssistantLite-${{ github.run_number }}
-          path: C:\Users\runneradmin\AppData\Roaming\Emby-Server\programdata\plugins\*
+          path: artifacts/*
+          if-no-files-found: error
           compression-level: 0  # DLL已经是二进制，不需要压缩
           retention-days: 30
