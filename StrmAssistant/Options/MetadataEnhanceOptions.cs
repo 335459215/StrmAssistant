@@ -5,6 +5,7 @@ using Emby.Web.GenericEdit.Validation;
 using MediaBrowser.Model.Attributes;
 using MediaBrowser.Model.LocalizationAttributes;
 using StrmAssistant.Common;
+using StrmAssistant.Options.Metadata;
 using StrmAssistant.Properties;
 using System;
 using System.Collections.Generic;
@@ -191,6 +192,15 @@ namespace StrmAssistant.Options
         [Browsable(false)]
         public bool IsNfoMetadataPluginLoaded =>
             AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "NfoMetadata") && IsModSupported;
+
+        [DisplayNameL("MetadataScrapeOptions_EditorTitle", typeof(Resources))]
+        public MetadataScrapeOptions MetadataScrapeOptions { get; set; } = new MetadataScrapeOptions();
+
+        [DisplayNameL("MetadataBuildOptions_EditorTitle", typeof(Resources))]
+        public MetadataBuildOptions MetadataBuildOptions { get; set; } = new MetadataBuildOptions();
+
+        [DisplayNameL("MetadataRefreshOptions_EditorTitle", typeof(Resources))]
+        public MetadataRefreshOptions MetadataRefreshOptions { get; set; } = new MetadataRefreshOptions();
 
         [Browsable(false)]
         public bool IsModSupported => true;

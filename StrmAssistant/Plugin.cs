@@ -32,6 +32,7 @@ using StrmAssistant.Options;
 using StrmAssistant.Options.Store;
 using StrmAssistant.Options.View;
 using StrmAssistant.Properties;
+using StrmAssistant.Provider;
 using StrmAssistant.ScheduledTask;
 using StrmAssistant.Web.Helper;
 using System;
@@ -68,6 +69,8 @@ namespace StrmAssistant
         public static PlaySessionMonitor PlaySessionMonitor { get; private set; }
         public static MetadataApi MetadataApi { get; private set; }
         public static VideoThumbnailApi VideoThumbnailApi { get; private set; }
+        public static UnifiedIntroDbProvider IntroDbProvider { get; private set; }
+        public static IntroMarkerProtector MarkerProtector { get; private set; }
 
         private readonly Guid _id = new Guid("63c322b7-a371-41a3-b11f-04f8418b37d8");
 
@@ -301,6 +304,8 @@ namespace StrmAssistant
                 jsonSerializer, httpClient);
             VideoThumbnailApi = new VideoThumbnailApi(libraryManager, fileSystem, imageExtractionManager, itemRepository,
                 mediaMountManager, serverApplicationPaths, libraryMonitor, ffmpegManager);
+            IntroDbProvider = new UnifiedIntroDbProvider(jsonSerializer);
+            MarkerProtector = new IntroMarkerProtector(itemRepository);
             ShortcutMenuHelper.Initialize(configurationManager);
 
             if (MainOptionsStore.GetOptions().GeneralOptions.CatchupMode) QueueManager.Initialize();

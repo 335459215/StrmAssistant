@@ -2213,5 +2213,257 @@ namespace StrmAssistant.Properties {
                 return ResourceManager.GetString("GeneralOptions_MemoryCleanupInterval_Description", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Metadata Scrape.
+        /// </summary>
+        public static string MetadataScrapeOptions_EditorTitle {
+            get {
+                return ResourceManager.GetString("MetadataScrapeOptions_EditorTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable Chinese Metadata Search.
+        /// </summary>
+        public static string MetadataScrapeOptions_EnableChineseSearch {
+            get {
+                return ResourceManager.GetString("MetadataScrapeOptions_EnableChineseSearch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable Chinese metadata search optimization. Default is True.
+        /// </summary>
+        public static string MetadataScrapeOptions_Enable_Chinese_metadata_search {
+            get {
+                return ResourceManager.GetString("MetadataScrapeOptions_Enable_Chinese_metadata_search", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable Douban Metadata Search.
+        /// </summary>
+        public static string MetadataScrapeOptions_EnableDoubanSearch {
+            get {
+                return ResourceManager.GetString("MetadataScrapeOptions_EnableDoubanSearch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable Douban as metadata search source. Default is False.
+        /// </summary>
+        public static string MetadataScrapeOptions_Enable_Douban_metadata_search {
+            get {
+                return ResourceManager.GetString("MetadataScrapeOptions_Enable_Douban_metadata_search", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Metadata Build.
+        /// </summary>
+        public static string MetadataBuildOptions_EditorTitle {
+            get {
+                return ResourceManager.GetString("MetadataBuildOptions_EditorTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Replace Existing Metadata.
+        /// </summary>
+        public static string MetadataBuildOptions_ReplaceExistingMetadata {
+            get {
+                return ResourceManager.GetString("MetadataBuildOptions_ReplaceExistingMetadata", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Replace existing metadata during build. Default is False.
+        /// </summary>
+        public static string MetadataBuildOptions_Replace_existing_metadata_during_build {
+            get {
+                return ResourceManager.GetString("MetadataBuildOptions_Replace_existing_metadata_during_build", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Skip Items With Existing Metadata.
+        /// </summary>
+        public static string MetadataBuildOptions_SkipItemsWithExistingMetadata {
+            get {
+                return ResourceManager.GetString("MetadataBuildOptions_SkipItemsWithExistingMetadata", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Skip items that already have metadata during build. Default is True.
+        /// </summary>
+        public static string MetadataBuildOptions_Skip_items_that_already_have_metadata {
+            get {
+                return ResourceManager.GetString("MetadataBuildOptions_Skip_items_that_already_have_metadata", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Metadata Refresh.
+        /// </summary>
+        public static string MetadataRefreshOptions_EditorTitle {
+            get {
+                return ResourceManager.GetString("MetadataRefreshOptions_EditorTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable Auto Refresh.
+        /// </summary>
+        public static string MetadataRefreshOptions_EnableAutoRefresh {
+            get {
+                return ResourceManager.GetString("MetadataRefreshOptions_EnableAutoRefresh", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable automatic metadata refresh. Default is True.
+        /// </summary>
+        public static string MetadataRefreshOptions_Enable_automatic_metadata_refresh {
+            get {
+                return ResourceManager.GetString("MetadataRefreshOptions_Enable_automatic_metadata_refresh", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Refresh Interval (Days).
+        /// </summary>
+        public static string MetadataRefreshOptions_RefreshInterval {
+            get {
+                return ResourceManager.GetString("MetadataRefreshOptions_RefreshInterval", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Multiple Versions.
+        /// </summary>
+        public static string MultipleVersionsOptions_EditorTitle {
+            get {
+                return ResourceManager.GetString("MultipleVersionsOptions_EditorTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable Auto Merge.
+        /// </summary>
+        public static string MultipleVersionsOptions_EnableAutoMerge {
+            get {
+                return ResourceManager.GetString("MultipleVersionsOptions_EnableAutoMerge", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Enable automatic version merging. Default is True.
+        /// </summary>
+        public static string MultipleVersionsOptions_Enable_automatic_version_merging {
+            get {
+                return ResourceManager.GetString("MultipleVersionsOptions_Enable_automatic_version_merging", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Merge Delay (Minutes).
+        /// </summary>
+        public static string MultipleVersionsOptions_MergeDelayMinutes {
+            get {
+                return ResourceManager.GetString("MultipleVersionsOptions_MergeDelayMinutes", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Fingerprint Detection.
+        /// </summary>
+        public static string IntroSkipFingerprintOptions_EditorTitle {
+            get {
+                return ResourceManager.GetString("IntroSkipFingerprintOptions_EditorTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Playback Settings.
+        /// </summary>
+        public static string IntroSkipPlaybackOptions_EditorTitle {
+            get {
+                return ResourceManager.GetString("IntroSkipPlaybackOptions_EditorTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scrape Settings.
+        /// </summary>
+        public static string IntroSkipScrapeOptions_EditorTitle {
+            get {
+                return ResourceManager.GetString("IntroSkipScrapeOptions_EditorTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Allowed clients. Default is EMPTY.
+        /// </summary>
+        public static string IntroSkipOptions_ClientScope_Allowed_clients__Default_is_EMPTY {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_ClientScope_Allowed_clients__Default_is_EMPTY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Max Auto Skip Intro Duration (Seconds).
+        /// </summary>
+        public static string IntroSkipOptions_MaxAutoSkipIntroDurationSeconds {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_MaxAutoSkipIntroDurationSeconds", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Dashboard.
+        /// </summary>
+        public static string DashboardOptions_EditorTitle_Dashboard {
+            get {
+                return ResourceManager.GetString("DashboardOptions_EditorTitle_Dashboard", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show Plugin Status.
+        /// </summary>
+        public static string DashboardOptions_ShowPluginStatus {
+            get {
+                return ResourceManager.GetString("DashboardOptions_ShowPluginStatus", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show plugin status on dashboard. Default is True.
+        /// </summary>
+        public static string DashboardOptions_Show_plugin_status_on_dashboard {
+            get {
+                return ResourceManager.GetString("DashboardOptions_Show_plugin_status_on_dashboard", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show System Info.
+        /// </summary>
+        public static string DashboardOptions_ShowSystemInfo {
+            get {
+                return ResourceManager.GetString("DashboardOptions_ShowSystemInfo", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Show system info on dashboard. Default is True.
+        /// </summary>
+        public static string DashboardOptions_Show_system_info_on_dashboard {
+            get {
+                return ResourceManager.GetString("DashboardOptions_Show_system_info_on_dashboard", resourceCulture);
+            }
+        }
     }
 }

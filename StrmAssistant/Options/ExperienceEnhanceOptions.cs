@@ -4,6 +4,7 @@ using Emby.Web.GenericEdit.Elements;
 using Emby.Web.GenericEdit.Elements.List;
 using MediaBrowser.Model.Attributes;
 using MediaBrowser.Model.LocalizationAttributes;
+using StrmAssistant.Options.Experience;
 using StrmAssistant.Properties;
 using System.ComponentModel;
 
@@ -79,6 +80,9 @@ namespace StrmAssistant.Options
 
         [DisplayNameL("UIFunctionOptions_EditorTitle_UI_Functions", typeof(Resources))]
         public UIFunctionOptions UIFunctionOptions { get; set; } = new UIFunctionOptions();
+
+        [DisplayNameL("MultipleVersionsOptions_EditorTitle", typeof(Resources))]
+        public MultipleVersionsOptions MultipleVersionsOptions { get; set; } = new MultipleVersionsOptions();
 
         [Browsable(false)]
         public bool IsModSupported => true;

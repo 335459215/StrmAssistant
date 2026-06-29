@@ -1,6 +1,7 @@
 using Emby.Web.GenericEdit;
 using MediaBrowser.Model.LocalizationAttributes;
 using StrmAssistant.Mod;
+using StrmAssistant.Options.Dashboard;
 using StrmAssistant.Properties;
 using System.ComponentModel;
 
@@ -23,6 +24,9 @@ namespace StrmAssistant.Options
 
         [DisplayNameL("AboutOptions_EditorTitle_About", typeof(Resources))]
         public AboutOptions AboutOptions { get; set; } = new AboutOptions();
+
+        [DisplayNameL("DashboardOptions_EditorTitle_Dashboard", typeof(Resources))]
+        public DashboardOptions DashboardOptions { get; set; } = new DashboardOptions();
 
         [Browsable(false)]
         public bool IsModSuccess => PatchManager.IsModSuccess();

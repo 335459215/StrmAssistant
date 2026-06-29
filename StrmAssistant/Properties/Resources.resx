@@ -800,4 +800,88 @@
   <data name="GeneralOptions_MemoryCleanupInterval_Description" xml:space="preserve">
     <value>内存清理间隔，必须在 1 至 120 之间，默认为 5。</value>
   </data>
+  <data name="MetadataScrapeOptions_EditorTitle" xml:space="preserve">
+    <value>元数据抓取</value>
+  </data>
+  <data name="MetadataScrapeOptions_EnableChineseSearch" xml:space="preserve">
+    <value>启用中文元数据搜索</value>
+  </data>
+  <data name="MetadataScrapeOptions_Enable_Chinese_metadata_search" xml:space="preserve">
+    <value>启用中文元数据搜索优化，默认开启。</value>
+  </data>
+  <data name="MetadataScrapeOptions_EnableDoubanSearch" xml:space="preserve">
+    <value>启用豆瓣元数据搜索</value>
+  </data>
+  <data name="MetadataScrapeOptions_Enable_Douban_metadata_search" xml:space="preserve">
+    <value>启用豆瓣作为元数据搜索源，默认关闭。</value>
+  </data>
+  <data name="MetadataBuildOptions_EditorTitle" xml:space="preserve">
+    <value>元数据构建</value>
+  </data>
+  <data name="MetadataBuildOptions_ReplaceExistingMetadata" xml:space="preserve">
+    <value>替换已有元数据</value>
+  </data>
+  <data name="MetadataBuildOptions_Replace_existing_metadata_during_build" xml:space="preserve">
+    <value>构建时替换已有的元数据，默认关闭。</value>
+  </data>
+  <data name="MetadataBuildOptions_SkipItemsWithExistingMetadata" xml:space="preserve">
+    <value>跳过已有元数据的项</value>
+  </data>
+  <data name="MetadataBuildOptions_Skip_items_that_already_have_metadata" xml:space="preserve">
+    <value>构建时跳过已有元数据的条目，默认开启。</value>
+  </data>
+  <data name="MetadataRefreshOptions_EditorTitle" xml:space="preserve">
+    <value>元数据刷新</value>
+  </data>
+  <data name="MetadataRefreshOptions_EnableAutoRefresh" xml:space="preserve">
+    <value>启用自动元数据刷新</value>
+  </data>
+  <data name="MetadataRefreshOptions_Enable_automatic_metadata_refresh" xml:space="preserve">
+    <value>启用自动元数据刷新，默认开启。</value>
+  </data>
+  <data name="MetadataRefreshOptions_RefreshInterval" xml:space="preserve">
+    <value>刷新间隔（天）</value>
+  </data>
+  <data name="MultipleVersionsOptions_EditorTitle" xml:space="preserve">
+    <value>多版本合并</value>
+  </data>
+  <data name="MultipleVersionsOptions_EnableAutoMerge" xml:space="preserve">
+    <value>启用自动版本合并</value>
+  </data>
+  <data name="MultipleVersionsOptions_Enable_automatic_version_merging" xml:space="preserve">
+    <value>启用自动版本合并，默认开启。</value>
+  </data>
+  <data name="MultipleVersionsOptions_MergeDelayMinutes" xml:space="preserve">
+    <value>合并延迟（分钟）</value>
+  </data>
+  <data name="IntroSkipFingerprintOptions_EditorTitle" xml:space="preserve">
+    <value>指纹检测</value>
+  </data>
+  <data name="IntroSkipPlaybackOptions_EditorTitle" xml:space="preserve">
+    <value>播放设置</value>
+  </data>
+  <data name="IntroSkipScrapeOptions_EditorTitle" xml:space="preserve">
+    <value>探测设置</value>
+  </data>
+  <data name="IntroSkipOptions_ClientScope_Allowed_clients__Default_is_EMPTY" xml:space="preserve">
+    <value>允许的客户端，默认为空（全部）。</value>
+  </data>
+  <data name="IntroSkipOptions_MaxAutoSkipIntroDurationSeconds" xml:space="preserve">
+    <value>自动跳过片头最大时长（秒）</value>
+  </data>
+  <data name="DashboardOptions_EditorTitle_Dashboard" xml:space="preserve">
+    <value>仪表盘</value>
+  </data>
+  <data name="DashboardOptions_ShowPluginStatus" xml:space="preserve">
+    <value>显示插件状态</value>
+  </data>
+  <data name="DashboardOptions_Show_plugin_status_on_dashboard" xml:space="preserve">
+    <value>在仪表盘上显示插件状态，默认开启。</value>
+  </data>
+  <data name="DashboardOptions_ShowSystemInfo" xml:space="preserve">
+    <value>显示系统信息</value>
+  </data>
+  <data name="DashboardOptions_Show_system_info_on_dashboard" xml:space="preserve">
+    <value>在仪表盘上显示系统信息，默认开启。</value>
+  </data>
 </root>

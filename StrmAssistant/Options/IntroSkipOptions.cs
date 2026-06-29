@@ -10,6 +10,7 @@ using MediaBrowser.Model.Attributes;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.LocalizationAttributes;
 using StrmAssistant.Common;
+using StrmAssistant.Options.IntroSkip;
 using StrmAssistant.Properties;
 using System;
 using System.Collections.Generic;
@@ -137,6 +138,9 @@ namespace StrmAssistant.Options
 
         [VisibleCondition(nameof(EnableIntroSkip), SimpleCondition.IsTrue)]
         public SpacerItem ClearIntroResultSeparator { get; set; } = new SpacerItem(SpacerSize.Small);
+
+        [DisplayNameL("IntroSkipPlaybackOptions_EditorTitle", typeof(Resources))]
+        public IntroSkipPlaybackOptions IntroSkipPlaybackOptions { get; set; } = new IntroSkipPlaybackOptions();
 
         [Browsable(false)]
         public bool IsModSupported => true;
