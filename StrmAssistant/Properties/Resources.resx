@@ -884,4 +884,31 @@
   <data name="DashboardOptions_Show_system_info_on_dashboard" xml:space="preserve">
     <value>在仪表盘上显示系统信息，默认开启。</value>
   </data>
+  <data name="MetadataEnhanceOptions_EnableDoubanAssistScraping_Enable_Douban_Assist_Scraping" xml:space="preserve">
+    <value>启用豆瓣辅助刮削</value>
+  </data>
+  <data name="MetadataEnhanceOptions_EnableDoubanAssistScraping_Prefer_Douban_rating__title__and_overview_over_MovieDb__Default_is_OFF_" xml:space="preserve">
+    <value>优先使用豆瓣评分、标题和简介替代 MovieDb 数据，默认关闭。</value>
+  </data>
+  <data name="MetadataEnhanceOptions_DoubanAssistScrapeScope_Douban_Assist_Scrape_Scope" xml:space="preserve">
+    <value>豆瓣辅助刮削范围</value>
+  </data>
+  <data name="MetadataEnhanceOptions_DoubanAssistScrapeScope_Douban_assist_scope__Default_is_ALL_" xml:space="preserve">
+    <value>豆瓣辅助刮削范围，默认全选。</value>
+  </data>
+  <data name="DoubanAssistScrapeOption_Rating_Rating" xml:space="preserve">
+    <value>评分</value>
+  </data>
+  <data name="DoubanAssistScrapeOption_Cast_Cast" xml:space="preserve">
+    <value>演职人员</value>
+  </data>
+  <data name="DoubanAssistScrapeOption_NameOverview_NameOverview" xml:space="preserve">
+    <value>标题与简介</value>
+  </data>
+  <data name="DoubanAssistScrapeOption_Poster_Poster" xml:space="preserve">
+    <value>海报</value>
+  </data>
+  <data name="BuildDoubanCacheTask_Description_Build_Douban_rating_cache" xml:space="preserve">
+    <value>构建豆瓣评分缓存，为媒体库中的电影和节目填充豆瓣评分</value>
+  </data>
 </root>

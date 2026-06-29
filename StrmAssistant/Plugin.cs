@@ -68,6 +68,7 @@ namespace StrmAssistant
         public static SubtitleApi SubtitleApi { get; private set; }
         public static PlaySessionMonitor PlaySessionMonitor { get; private set; }
         public static MetadataApi MetadataApi { get; private set; }
+        public static DoubanApi DoubanApi { get; private set; }
         public static VideoThumbnailApi VideoThumbnailApi { get; private set; }
         public static UnifiedIntroDbProvider IntroDbProvider { get; private set; }
         public static IntroMarkerProtector MarkerProtector { get; private set; }
@@ -302,6 +303,7 @@ namespace StrmAssistant
                 itemRepository);
             MetadataApi = new MetadataApi(libraryManager, fileSystem, configurationManager, localizationManager,
                 jsonSerializer, httpClient);
+            DoubanApi = new DoubanApi(jsonSerializer, httpClient, libraryManager);
             VideoThumbnailApi = new VideoThumbnailApi(libraryManager, fileSystem, imageExtractionManager, itemRepository,
                 mediaMountManager, serverApplicationPaths, libraryMonitor, ffmpegManager);
             IntroDbProvider = new UnifiedIntroDbProvider(jsonSerializer);

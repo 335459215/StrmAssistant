@@ -6,13 +6,15 @@ using MediaBrowser.Model.Entities;
 
 namespace StrmAssistant.Provider
 {
-    public class DoubanExternalId : IExternalId
+    public class DoubanExternalId : IExternalId, IHasWebsite
     {
         public string Name => "Douban";
 
         public string Key => StaticName;
 
         public string UrlFormatString => "https://movie.douban.com/subject/{0}/";
+
+        public string Website => "https://movie.douban.com";
 
         public bool Supports(IHasProviderIds item)
         {

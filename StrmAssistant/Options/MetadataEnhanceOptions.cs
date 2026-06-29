@@ -193,6 +193,37 @@ namespace StrmAssistant.Options
         public bool IsNfoMetadataPluginLoaded =>
             AppDomain.CurrentDomain.GetAssemblies().Any(a => a.GetName().Name == "NfoMetadata") && IsModSupported;
 
+        [DisplayNameL("MetadataEnhanceOptions_EnableDoubanAssistScraping_Enable_Douban_Assist_Scraping", typeof(Resources))]
+        [DescriptionL("MetadataEnhanceOptions_EnableDoubanAssistScraping_Prefer_Douban_rating__title__and_overview_over_MovieDb__Default_is_OFF_", typeof(Resources))]
+        [Required]
+        public bool EnableDoubanAssistScraping { get; set; } = false;
+
+        [Browsable(false)]
+        public List<EditorSelectOption> DoubanAssistScrapeOptionList { get; set; } = new List<EditorSelectOption>();
+
+        [DisplayNameL("MetadataEnhanceOptions_DoubanAssistScrapeScope_Douban_Assist_Scrape_Scope", typeof(Resources))]
+        [DescriptionL("MetadataEnhanceOptions_DoubanAssistScrapeScope_Douban_assist_scope__Default_is_ALL_", typeof(Resources))]
+        [EditMultilSelect]
+        [SelectItemsSource(nameof(DoubanAssistScrapeOptionList))]
+        [VisibleCondition(nameof(EnableDoubanAssistScraping), SimpleCondition.IsTrue)]
+        public string DoubanAssistScrapeScope { get; set; } = string.Join(",",
+            DoubanAssistScrapeOption.Rating.ToString(),
+            DoubanAssistScrapeOption.CastCharacter.ToString(),
+            DoubanAssistScrapeOption.NameOverview.ToString(),
+            DoubanAssistScrapeOption.Poster.ToString());
+
+        public enum DoubanAssistScrapeOption
+        {
+            [DescriptionL("DoubanAssistScrapeOption_Rating_Rating", typeof(Resources))]
+            Rating,
+            [DescriptionL("DoubanAssistScrapeOption_Cast_Cast", typeof(Resources))]
+            CastCharacter,
+            [DescriptionL("DoubanAssistScrapeOption_NameOverview_NameOverview", typeof(Resources))]
+            NameOverview,
+            [DescriptionL("DoubanAssistScrapeOption_Poster_Poster", typeof(Resources))]
+            Poster
+        }
+
         [DisplayNameL("MetadataScrapeOptions_EditorTitle", typeof(Resources))]
         public MetadataScrapeOptions MetadataScrapeOptions { get; set; } = new MetadataScrapeOptions();
 
@@ -243,6 +274,20 @@ namespace StrmAssistant.Options
                 };
 
                 EpisodeRefreshOptionList.Add(selectOption);
+            }
+
+            DoubanAssistScrapeOptionList.Clear();
+
+            foreach (Enum item in Enum.GetValues(typeof(DoubanAssistScrapeOption)))
+            {
+                var selectOption = new EditorSelectOption
+                {
+                    Value = item.ToString(),
+                    Name = EnumExtensions.GetDescription(item),
+                    IsEnabled = true,
+                };
+
+                DoubanAssistScrapeOptionList.Add(selectOption);
             }
         }
 
