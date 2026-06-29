@@ -2,7 +2,11 @@
 
   <PropertyGroup>
 
-    <TargetFrameworks>net6.0</TargetFrameworks>
+    <TargetFramework>net6.0</TargetFramework>
+    <!-- 不硬编码 RuntimeIdentifier，让构建系统在发布时通过 -r 参数指定 -->
+    <!-- 硬编码 linux-arm64 会导致在任何架构上都解析 ARM64 的原生依赖，造成不匹配 -->
+    <!-- <RuntimeIdentifier>linux-arm64</RuntimeIdentifier> -->
+    <SelfContained>false</SelfContained>
 
     <AssemblyVersion>2.3.0.0</AssemblyVersion>
 
@@ -54,9 +58,9 @@
 
     <PackageReference Include="Lib.Harmony" Version="2.3.6" />
 
-    <PackageReference Include="mediabrowser.server.core" Version="4.8.10.0">
+    <PackageReference Include="mediabrowser.server.core" Version="4.9.1.90">
 
-      <!-- 当前支持4.8.10.0及更高版本 -->
+      <!-- 支持4.8.10.0至4.10.x版本，运行时通过EmbyVersionAdapter适配 -->
 
     </PackageReference>
 
@@ -67,8 +71,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 
     </PackageReference>
-
-    <PackageReference Include="Resource.Embedder" Version="2.2.0" />
 
     <PackageReference Include="SQLitePCLRaw.core" Version="1.1.14" />
 
@@ -97,31 +99,15 @@
   <ItemGroup>
 
     <EmbeddedResource Update="Properties\Resources.resx">
-
       <Generator>PublicResXFileCodeGenerator</Generator>
-
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-
-    </EmbeddedResource>
-
-    <EmbeddedResource Update="Properties\Resources.zh-hant.resx">
-
-      <DependentUpon>Resources.resx</DependentUpon>
-
-    </EmbeddedResource>
-
-    <EmbeddedResource Update="Properties\Resources.zh.resx">
-
-      <DependentUpon>Resources.resx</DependentUpon>
-
     </EmbeddedResource>
 
   </ItemGroup>
 
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-
-    <Exec Command="$(ILRepack) /out:%25AppData%25\Emby-Server\programdata\plugins\$(TargetFileName) $(TargetPath) $(TargetDir)0Harmony.dll $(TargetDir)ChineseConverter.dll $(TargetDir)TinyPinyin.dll /lib:$(TargetDir)" />
-
+  <!-- PostBuild: ILRepack 合并为单一插件 DLL -->
+  <Target Name="ILRepackMerge" AfterTargets="Build" Condition="Exists('$(TargetDir)0Harmony.dll') And '$(OS)' != 'Windows_NT'">
+    <Exec Command="dotnet $(ILRepack) /out:$(TargetDir)$(TargetFileName) $(TargetPath) $(TargetDir)0Harmony.dll $(TargetDir)ChineseConverter.dll $(TargetDir)TinyPinyin.dll /lib:$(TargetDir)" />
   </Target>
 
 </Project>

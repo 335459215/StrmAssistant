@@ -41,7 +41,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using static StrmAssistant.Options.ExperienceEnhanceOptions;
 using static StrmAssistant.Options.GeneralOptions;
 using static StrmAssistant.Options.MediaInfoExtractOptions;
@@ -49,7 +49,7 @@ using static StrmAssistant.Options.Utility;
 
 namespace StrmAssistant
 {
-    public class Plugin : BasePlugin, IHasThumbImage, IHasUIPages
+    public class Plugin : BasePlugin, IHasThumbImage, IHasUIPages, IDisposable
     {
         private List<IPluginUIPageController> _pages;
         public readonly PluginOptionsStore MainOptionsStore;
@@ -85,6 +85,7 @@ namespace StrmAssistant
         private readonly IFileSystem _fileSystem;
         private readonly ITaskManager _taskManager;
         private readonly ISessionManager _sessionManager;
+        private readonly IServerConfigurationManager _configurationManager;
 
         public Plugin(IApplicationHost applicationHost, IApplicationPaths applicationPaths, ILogManager logManager,
             IFileSystem fileSystem, ILibraryManager libraryManager, ISessionManager sessionManager,
@@ -103,6 +104,13 @@ namespace StrmAssistant
             Logger.Info("Plugin is getting loaded.");
             ApplicationHost = applicationHost;
             ApplicationPaths = applicationPaths;
+
+            // Observe unobserved task exceptions to prevent process crash
+            TaskScheduler.UnobservedTaskException += (s, e) =>
+            {
+                Logger.Error("Unobserved task exception: {0}", e.Exception?.InnerException?.Message ?? e.Exception?.Message ?? "unknown");
+                e.SetObserved();
+            };
             
             // 初始化核心架构组件
             try
@@ -135,6 +143,7 @@ namespace StrmAssistant
             _sessionManager = sessionManager;
             _fileSystem = fileSystem;
             _taskManager = taskManager;
+            _configurationManager = configurationManager;
 
             MainOptionsStore = new PluginOptionsStore(applicationHost, Logger, Name);
             MediaInfoExtractStore =
@@ -147,6 +156,8 @@ namespace StrmAssistant
             InitializeOptionCache();
 
             Resources.Culture = DefaultUICulture;
+            Logger.Info($"StrmAssistant Resources.Culture set to: {Resources.Culture?.Name ?? "(null)"}");
+            Logger.Info($"Emby UICulture config: {_configurationManager?.Configuration?.UICulture ?? "(null)"}");
 
             if (MainOptionsStore.GetOptions().AboutOptions.DebugMode)
             {
@@ -405,7 +416,11 @@ namespace StrmAssistant
                     else
                     {
                         _ = MediaInfoApi.SerializeMediaInfo(e.Item.InternalId, directoryService, true,
-                            "OnItemAdded Overwrite").ConfigureAwait(false);
+                            "OnItemAdded Overwrite").ContinueWith(t =>
+                        {
+                            if (t.Exception != null)
+                                Logger.Error("OnItemAdded SerializeMediaInfo failed: {0}", t.Exception.InnerExceptions[0].Message);
+                        }, TaskContinuationOptions.OnlyOnFaulted);
                     }
                 }
 
@@ -455,7 +470,7 @@ namespace StrmAssistant
             }
             catch (Exception ex)
             {
-                Logger.Debug(ex.Message);
+                Logger.Error($"OnItemAdded unhandled exception for '{e.Item?.Name}': {ex.Message}");
                 Logger.Debug(ex.StackTrace);
             }
         }
@@ -544,6 +559,20 @@ namespace StrmAssistant
             }
         }
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                CleanupResources(false);
+            }
+        }
+
         public override void OnUninstalling()
         {
             CleanupResources(true);
@@ -570,7 +599,7 @@ namespace StrmAssistant
                 MemoryCleaner.DisposeInstance();
                 PerformanceReporter.DisposeInstance();
                 PlaySessionMonitor?.Dispose();
-                PatchManager.ClearCaches();
+                PatchManager.CleanupPatches();
                 ShortcutMenuHelper.Dispose();
 
                 _pages?.Clear();
@@ -599,31 +628,11 @@ namespace StrmAssistant
 
         public string UserAgent => $"{Name}/{_cachedVersion}";
 
-        public CultureInfo DefaultUICulture
-        {
-            get
-            {
-                var configured = MainOptionsStore.GetOptions().AboutOptions.DefaultUICulture;
-                if (string.IsNullOrEmpty(configured) ||
-                    string.Equals(configured, AboutOptions.UICultureAuto, StringComparison.OrdinalIgnoreCase))
-                {
-                    return CultureInfo.CurrentUICulture;
-                }
-
-                try
-                {
-                    return new CultureInfo(configured);
-                }
-                catch (CultureNotFoundException)
-                {
-                    return CultureInfo.CurrentUICulture;
-                }
-            }
-        }
+        public CultureInfo DefaultUICulture => new CultureInfo("zh-CN");
 
         public bool DebugMode;
 
-        public bool IsModSupported => RuntimeInformation.ProcessArchitecture == Architecture.X64;
+        public bool IsModSupported => true;
 
         public Stream GetThumbImage()
         {

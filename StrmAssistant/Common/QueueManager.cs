@@ -22,7 +22,6 @@ namespace StrmAssistant.Common
         private static DateTime _fingerprintProcessLastRunTime = DateTime.MinValue;
         private static DateTime _episodeRefreshProcessLastRunTime = DateTime.MinValue;
         private static readonly TimeSpan ThrottleInterval = TimeSpan.FromSeconds(30);
-        private static readonly Random Random = new Random();
         private static int _currentMasterMaxConcurrentCount;
         private static int _currentTier2MaxConcurrentCount;
 
@@ -30,8 +29,8 @@ namespace StrmAssistant.Common
         public static CancellationTokenSource IntroSkipTokenSource;
         public static CancellationTokenSource FingerprintTokenSource;
         public static CancellationTokenSource EpisodeRefreshTokenSource;
-        public static SemaphoreSlim MasterSemaphore;
-        public static SemaphoreSlim Tier2Semaphore;
+        public static volatile SemaphoreSlim MasterSemaphore;
+        public static volatile SemaphoreSlim Tier2Semaphore;
         public static ConcurrentQueue<BaseItem> MediaInfoExtractItemQueue = new ConcurrentQueue<BaseItem>();
         public static ConcurrentQueue<Episode> IntroSkipItemQueue = new ConcurrentQueue<Episode>();
         public static ConcurrentQueue<BaseItem> FingerprintItemQueue = new ConcurrentQueue<BaseItem>();
@@ -133,7 +132,8 @@ namespace StrmAssistant.Common
             if (_currentMasterMaxConcurrentCount != maxConcurrentCount)
             {
                 _currentMasterMaxConcurrentCount = maxConcurrentCount;
-                MasterSemaphore = new SemaphoreSlim(maxConcurrentCount);
+                var oldSemaphore = Interlocked.Exchange(ref MasterSemaphore, new SemaphoreSlim(maxConcurrentCount));
+                oldSemaphore?.Dispose();
             }
         }
 
@@ -142,7 +142,8 @@ namespace StrmAssistant.Common
             if (_currentTier2MaxConcurrentCount != maxConcurrentCount)
             {
                 _currentTier2MaxConcurrentCount = maxConcurrentCount;
-                Tier2Semaphore = new SemaphoreSlim(maxConcurrentCount);
+                var oldSemaphore = Interlocked.Exchange(ref Tier2Semaphore, new SemaphoreSlim(maxConcurrentCount));
+                oldSemaphore?.Dispose();
             }
         }
 
@@ -777,7 +778,7 @@ namespace StrmAssistant.Common
                                 try
                                 {
                                     await Task.Delay(
-                                            Random.Next(0,
+                                            Random.Shared.Next(0,
                                                 Math.Max(0, tier2MaxConcurrentCount - Tier2Semaphore.CurrentCount) *
                                                 MetadataApi.RequestIntervalMs), cancellationToken)
                                         .ConfigureAwait(false);
@@ -872,6 +873,11 @@ namespace StrmAssistant.Common
             EpisodeRefreshTokenSource?.Cancel();
             EpisodeRefreshTokenSource?.Dispose();
             EpisodeRefreshTokenSource = null;
+
+            MasterSemaphore?.Dispose();
+            MasterSemaphore = null;
+            Tier2Semaphore?.Dispose();
+            Tier2Semaphore = null;
 
             MediaInfoExtractItemQueue.Clear();
             IntroSkipItemQueue.Clear();

@@ -9,9 +9,9 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace StrmAssistant
+namespace StrmAssistant.ScheduledTask
 {
-    public class PersistMediaInfoTask: IScheduledTask
+    public class PersistMediaInfoTask: IScheduledTask, IConfigurableScheduledTask
     {
         private readonly ILogger _logger;
         private readonly IFileSystem _fileSystem;
@@ -160,5 +160,9 @@ namespace StrmAssistant
         {
             return Array.Empty<TaskTriggerInfo>();
         }
+
+        public bool IsHidden => false;
+        public bool IsEnabled => true;
+        public bool IsLogged => true;
     }
 }

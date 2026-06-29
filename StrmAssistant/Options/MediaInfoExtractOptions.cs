@@ -10,7 +10,6 @@ using StrmAssistant.Properties;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Runtime.InteropServices;
 
 namespace StrmAssistant.Options
 {
@@ -109,7 +108,7 @@ namespace StrmAssistant.Options
         public string LibraryScope { get; set; } = string.Empty;
 
         [Browsable(false)]
-        public bool IsModSupported => RuntimeInformation.ProcessArchitecture == Architecture.X64;
+        public bool IsModSupported => true;
 
         public void Initialize(ILibraryManager libraryManager)
         {

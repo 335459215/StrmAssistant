@@ -15,7 +15,7 @@ using static StrmAssistant.Options.MediaInfoExtractOptions;
 
 namespace StrmAssistant.ScheduledTask
 {
-    public class ExtractVideoThumbnailTask : IScheduledTask
+    public class ExtractVideoThumbnailTask : IScheduledTask, IConfigurableScheduledTask
     {
         private readonly ILogger _logger;
         private readonly IFileSystem _fileSystem;
@@ -213,6 +213,10 @@ namespace StrmAssistant.ScheduledTask
         {
             return Array.Empty<TaskTriggerInfo>();
         }
+
+        public bool IsHidden => false;
+        public bool IsEnabled => true;
+        public bool IsLogged => true;
 
         public static bool IsRunning { get; private set; }
     }

@@ -73,6 +73,12 @@ namespace StrmAssistant.Core
             // 从高到低检查版本，确保准确匹配
             if (version >= new Version("4.10.0.0"))
                 return EmbyApiVersion.V4_10_0;
+            if (version >= new Version("4.9.5.0"))
+                return EmbyApiVersion.V4_9_5;
+            if (version >= new Version("4.9.4.0"))
+                return EmbyApiVersion.V4_9_4;
+            if (version >= new Version("4.9.3.0"))
+                return EmbyApiVersion.V4_9_3;
             if (version >= new Version("4.9.2.0"))
                 return EmbyApiVersion.V4_9_2;
             if (version >= new Version("4.9.1.90"))
@@ -106,7 +112,11 @@ namespace StrmAssistant.Core
                 "AdvancedFingerprinting" => _apiVersion >= EmbyApiVersion.V4_9_1,
                 "OptimizedMediaSources" => _apiVersion >= EmbyApiVersion.V4_9_1_90,
                 "EnhancedNotifications" => _apiVersion >= EmbyApiVersion.V4_9_1_90,
-                _ => false
+                "BuiltInChineseSearch" => _apiVersion >= EmbyApiVersion.V4_9_3,
+                "V410ApiChanges" => _apiVersion >= EmbyApiVersion.V4_10_0,
+                "NewImageExtraction" => _apiVersion >= EmbyApiVersion.V4_10_0,
+                "UpdatedSearchEngine" => _apiVersion >= EmbyApiVersion.V4_10_0,
+                _ => true // 未知功能名默认支持，不阻断
             };
         }
         

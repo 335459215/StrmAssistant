@@ -35,9 +35,9 @@ namespace StrmAssistant.IntroSkip
 
         private static Task _introSkipProcessTask;
 
-        public static List<string> LibraryPathsInScope;
-        public static User[] UsersInScope;
-        public static HashSet<string> ClientsInScope;
+        public static volatile List<string> LibraryPathsInScope = new List<string>();
+        public static volatile User[] UsersInScope = Array.Empty<User>();
+        public static volatile HashSet<string> ClientsInScope = new HashSet<string>();
 
         public PlaySessionMonitor(ILibraryManager libraryManager, IUserManager userManager,
             ISessionManager sessionManager)
@@ -347,22 +347,25 @@ namespace StrmAssistant.IntroSkip
 
         public bool IsLibraryInScope(BaseItem item)
         {
-            return !string.IsNullOrEmpty(item.Path) && LibraryPathsInScope.Any(l => item.Path.StartsWith(l));
+            var paths = LibraryPathsInScope; // 捕获 volatile 引用
+            return !string.IsNullOrEmpty(item.Path) && paths.Any(l => item.Path.StartsWith(l));
         }
 
         public bool IsUserInScope(long userInternalId)
         {
-            if (!UsersInScope.Any())
+            var users = UsersInScope; // 捕获 volatile 引用
+            if (!users.Any())
                 return true;
 
-            var isUserInScope = UsersInScope.Any(u => u.InternalId == userInternalId);
+            var isUserInScope = users.Any(u => u.InternalId == userInternalId);
 
             return isUserInScope;
         }
 
         public bool IsClientInScope(string clientName)
         {
-            return ClientsInScope.Any(c => clientName.Contains(c, StringComparison.OrdinalIgnoreCase));
+            var clients = ClientsInScope; // 捕获 volatile 引用
+            return clients.Any(c => clientName.Contains(c, StringComparison.OrdinalIgnoreCase));
         }
 
         private void UpdateIntroTask(Episode episode, SessionInfo session, PlaySessionData playSessionData,
@@ -387,7 +390,7 @@ namespace StrmAssistant.IntroSkip
                     }
                 }
 
-                var task = new Task(() =>
+                var task = Task.Run(() =>
                 {
                     try
                     {
@@ -398,7 +401,7 @@ namespace StrmAssistant.IntroSkip
                     }
                     catch (Exception e)
                     {
-                        _logger.Debug(e.Message);
+                        _logger.Error("Error updating intro marker: {0}", e.Message);
                         _logger.Debug(e.StackTrace);
                     }
                 });
@@ -408,7 +411,6 @@ namespace StrmAssistant.IntroSkip
                     task.ContinueWith(t => { _ongoingIntroUpdates.TryRemove(episodeId, out _); },
                         TaskContinuationOptions.ExecuteSynchronously);
                     _lastIntroUpdateTimes[episodeId] = now;
-                    task.Start();
                 }
             }
         }
@@ -434,7 +436,7 @@ namespace StrmAssistant.IntroSkip
                     }
                 }
 
-                var task = new Task(() =>
+                var task = Task.Run(() =>
                 {
                     try
                     {
@@ -443,7 +445,7 @@ namespace StrmAssistant.IntroSkip
                     }
                     catch (Exception e)
                     {
-                        _logger.Debug(e.Message);
+                        _logger.Error("Error updating credits marker: {0}", e.Message);
                         _logger.Debug(e.StackTrace);
                     }
                 });
@@ -453,7 +455,6 @@ namespace StrmAssistant.IntroSkip
                     task.ContinueWith(t => { _ongoingCreditsUpdates.TryRemove(episodeId, out _); },
                         TaskContinuationOptions.ExecuteSynchronously);
                     _lastCreditsUpdateTimes[episodeId] = now;
-                    task.Start();
                 }
             }
         }
@@ -463,6 +464,22 @@ namespace StrmAssistant.IntroSkip
             _sessionManager.PlaybackStart -= OnPlaybackStart;
             _sessionManager.PlaybackProgress -= OnPlaybackProgress;
             _sessionManager.PlaybackStopped -= OnPlaybackStopped;
+
+            // Wait for ongoing update tasks to complete before clearing
+            try
+            {
+                var introTasks = _ongoingIntroUpdates.Values.ToArray();
+                var creditsTasks = _ongoingCreditsUpdates.Values.ToArray();
+                var allTasks = introTasks.Concat(creditsTasks).Where(t => !t.IsCompleted).ToArray();
+                if (allTasks.Length > 0)
+                {
+                    Task.WaitAll(allTasks, TimeSpan.FromSeconds(5));
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.Debug("Error waiting for pending tasks during Dispose: {0}", e.Message);
+            }
 
             _playSessionData.Clear();
             _ongoingIntroUpdates.Clear();

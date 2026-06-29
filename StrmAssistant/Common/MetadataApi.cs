@@ -34,7 +34,7 @@ namespace StrmAssistant.Common
         private readonly IJsonSerializer _jsonSerializer;
         private readonly IHttpClient _httpClient;
 
-        private static readonly LruCache LruCache = new LruCache(20);
+        private static readonly LruCache LruCache = new LruCache(100);
         private static long _lastRequestTicks;
 
         public const int RequestIntervalMs = 100;
@@ -153,7 +153,7 @@ namespace StrmAssistant.Common
 
         public string ProcessPersonInfo(string input, bool clean)
         {
-            if (IsChinese(input)) input = ConvertTraditionalToSimplified(input);
+            if (IsChinese(input) && !IsJapanese(input)) input = ConvertTraditionalToSimplified(input);
 
             if (clean) input = CleanPersonName(input);
 
@@ -240,7 +240,7 @@ namespace StrmAssistant.Common
 
             if (result != null) return result;
 
-            var num = Math.Min((RequestIntervalMs * 10000 - (DateTimeOffset.UtcNow.Ticks - _lastRequestTicks)) / 10000L,
+            var num = Math.Min((RequestIntervalMs * 10000L - (DateTimeOffset.UtcNow.Ticks - Interlocked.Read(ref _lastRequestTicks))) / 10000L,
                 RequestIntervalMs);
 
             if (num > 0L)
@@ -249,7 +249,7 @@ namespace StrmAssistant.Common
                 await Task.Delay(Convert.ToInt32(num)).ConfigureAwait(false);
             }
 
-            _lastRequestTicks = DateTimeOffset.UtcNow.Ticks;
+            Interlocked.Exchange(ref _lastRequestTicks, DateTimeOffset.UtcNow.Ticks);
 
             var options = new HttpRequestOptions
             {
@@ -265,22 +265,30 @@ namespace StrmAssistant.Common
                 using var response = await _httpClient.SendAsync(options, "GET").ConfigureAwait(false);
                 if (response.StatusCode != HttpStatusCode.OK)
                 {
-                    _logger.Debug("Failed to get MovieDb response - " + response.StatusCode);
+                    _logger.Warn($"TMDB API returned {response.StatusCode} for URL: {url}");
                     return null;
                 }
 
                 await using var contentStream = response.Content;
                 result = _jsonSerializer.DeserializeFromStream<T>(contentStream);
 
-                if (result is null) return null;
+                if (result is null)
+                {
+                    _logger.Warn($"TMDB API returned empty/null content for URL: {url}");
+                    return null;
+                }
 
                 AddOrUpdateCache(result, cacheKey, cachePath);
 
                 return result;
             }
+            catch (OperationCanceledException)
+            {
+                throw; // 取消异常应上抛
+            }
             catch (Exception e)
             {
-                _logger.Debug("Failed to get MovieDb response - " + e.Message);
+                _logger.Error($"Failed to get MovieDb response for URL: {url} - {e.Message}");
                 return null;
             }
         }

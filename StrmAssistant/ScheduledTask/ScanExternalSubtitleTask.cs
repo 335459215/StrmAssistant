@@ -11,7 +11,7 @@ using static StrmAssistant.Options.MediaInfoExtractOptions;
 
 namespace StrmAssistant.ScheduledTask
 {
-    public class ScanExternalSubtitleTask : IScheduledTask
+    public class ScanExternalSubtitleTask : IScheduledTask, IConfigurableScheduledTask
     {
         private readonly ILogger _logger;
         private readonly IFileSystem _fileSystem;
@@ -171,5 +171,9 @@ namespace StrmAssistant.ScheduledTask
         {
             return Array.Empty<TaskTriggerInfo>();
         }
+
+        public bool IsHidden => false;
+        public bool IsEnabled => true;
+        public bool IsLogged => true;
     }
 }

@@ -713,13 +713,5 @@
   <data name="GeneralOptions_MemoryCleanupInterval_Description" xml:space="preserve">
     <value>記憶體清理間隔，必須在 1 至 120 之間，預設為 5。</value>
   </data>
-  <data name="AboutOptions_DefaultUICulture_Language" xml:space="preserve">
-    <value>語言</value>
-  </data>
-  <data name="AboutOptions_DefaultUICulture_Description" xml:space="preserve">
-    <value>外掛介面語言。選擇「自動」將跟隨系統語言，選擇具體語言則強制使用該語言。預設為自動。</value>
-  </data>
-  <data name="AboutOptions_DefaultUICulture_Auto" xml:space="preserve">
-    <value>自動</value>
-  </data>
+
 </root>

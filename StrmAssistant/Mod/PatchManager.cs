@@ -13,8 +13,9 @@ namespace StrmAssistant.Mod
     {
         public static Harmony HarmonyMod;
         public static readonly List<PatchTracker> PatchTrackerList = new List<PatchTracker>();
+        internal static readonly object _patchLock = new object();
         
-        private static bool _isInitialized = false;
+        private static volatile bool _isInitialized = false;
 
         public static EnableImageCapture EnableImageCapture;
         public static EnhanceChineseSearch EnhanceChineseSearch;
@@ -50,8 +51,8 @@ namespace StrmAssistant.Mod
         {
             if (_isInitialized)
             {
-                Plugin.Instance.Logger.Warn("PatchManager already initialized");
-                return;
+                Plugin.Instance.Logger.Info("PatchManager re-initializing (plugin hot-reload detected)");
+                CleanupPatches();
             }
             
             try
@@ -593,6 +594,70 @@ namespace StrmAssistant.Mod
             HarmonyMethodCache.Clear();
             MethodInfoCache.Clear();
             Plugin.Instance.Logger.Debug("PatchManager caches cleared");
+        }
+
+        /// <summary>
+        /// 完整清理所有补丁和静态状态，用于插件热重载
+        /// </summary>
+        public static void CleanupPatches()
+        {
+            // 1. 卸载所有Harmony补丁
+            if (HarmonyMod != null)
+            {
+                try
+                {
+                    HarmonyMod.UnpatchAll(HarmonyMod.Id);
+                    Plugin.Instance?.Logger?.Info("All Harmony patches unpatched");
+                }
+                catch (Exception e)
+                {
+                    Plugin.Instance?.Logger?.Error($"Failed to unpatch all: {e.Message}");
+                }
+            }
+
+            // 2. 清空补丁追踪列表
+            lock (_patchLock)
+            {
+                PatchTrackerList.Clear();
+            }
+
+            // 3. 清空缓存
+            HarmonyMethodCache.Clear();
+            MethodInfoCache.Clear();
+
+            // 4. 重置状态标志
+            _isInitialized = false;
+            _lastModSuccessStatus = null;
+            _lastStatusLog = null;
+            HarmonyMod = null;
+
+            // 5. 清空补丁实例引用
+            EnableImageCapture = null;
+            EnhanceChineseSearch = null;
+            MergeMultiVersion = null;
+            ExclusiveExtract = null;
+            ChineseMovieDb = null;
+            ChineseTvdb = null;
+            EnhanceMovieDbPerson = null;
+            AltMovieDbConfig = null;
+            EnableProxyServer = null;
+            PreferOriginalPoster = null;
+            UnlockIntroSkip = null;
+            PinyinSortName = null;
+            EnhanceNfoMetadata = null;
+            HidePersonNoImage = null;
+            EnforceLibraryOrder = null;
+            BeautifyMissingMetadata = null;
+            EnhanceMissingEpisodes = null;
+            ChapterChangeTracker = null;
+            MovieDbEpisodeGroup = null;
+            OptimizeMovieDbEpisodeScraping = null;
+            NoBoxsetsAutoCreation = null;
+            EnhanceNotificationSystem = null;
+            EnableDeepDelete = null;
+            SuppressPluginUpdate = null;
+
+            Plugin.Instance?.Logger?.Info("PatchManager cleanup completed - ready for re-initialization");
         }
     }
 }

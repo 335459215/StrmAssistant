@@ -54,7 +54,10 @@ namespace StrmAssistant.Mod
             InitializedAt = null;
             ErrorMessages = new List<string>();
 
-            PatchManager.PatchTrackerList.Add(this);
+            lock (PatchManager._patchLock)
+            {
+                PatchManager.PatchTrackerList.Add(this);
+            }
         }
 
         public Type PatchType { get; set; }

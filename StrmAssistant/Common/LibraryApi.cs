@@ -121,9 +121,9 @@ namespace StrmAssistant.Common
             CollectionType.BoxSets.ToString()
         };
 
-        public static List<string> LibraryPathsInScope;
-        public static Dictionary<User, bool> AllUsers = new Dictionary<User, bool>();
-        public static string[] AdminOrderedViews = Array.Empty<string>();
+        public static volatile List<string> LibraryPathsInScope = new List<string>();
+        public static volatile Dictionary<User, bool> AllUsers = new Dictionary<User, bool>();
+        public static volatile string[] AdminOrderedViews = Array.Empty<string>();
 
         public LibraryApi(ILibraryManager libraryManager, IProviderManager providerManager, IFileSystem fileSystem,
             IMediaMountManager mediaMountManager, IUserManager userManager)
@@ -162,7 +162,8 @@ namespace StrmAssistant.Common
 
         public bool IsLibraryInScope(BaseItem item)
         {
-            return !string.IsNullOrEmpty(item.Path) && LibraryPathsInScope.Any(l => item.Path.StartsWith(l));
+            var paths = LibraryPathsInScope; // 捕获 volatile 引用，防止原子替换期间枚举异常
+            return !string.IsNullOrEmpty(item.Path) && paths.Any(l => item.Path.StartsWith(l));
         }
 
         public void FetchUsers()
@@ -173,11 +174,12 @@ namespace StrmAssistant.Common
             };
             var allUsers = _userManager.GetUserList(userQuery);
 
-            AllUsers.Clear();
+            var newUsers = new Dictionary<User, bool>();
             foreach (var user in allUsers)
             {
-                AllUsers[user] = _userManager.GetUserById(user.InternalId).Policy.IsAdministrator;
+                newUsers[user] = _userManager.GetUserById(user.InternalId).Policy.IsAdministrator;
             }
+            AllUsers = newUsers; // 原子替换，避免并发读写异常
 
             FetchAdminOrderedViews();
         }
@@ -193,9 +195,11 @@ namespace StrmAssistant.Common
         {
             if (!item.RunTimeTicks.HasValue) return false;
 
-            if (item.Size == 0) return false;
+            var hasStreams = item.GetMediaStreams().Any(i => i.Type == MediaStreamType.Video || i.Type == MediaStreamType.Audio);
+            // Size==0 但有有效流时仍视为有媒体信息（某些容器不报告Size）
+            if (item.Size == 0) return hasStreams;
 
-            return item.GetMediaStreams().Any(i => i.Type == MediaStreamType.Video || i.Type == MediaStreamType.Audio);
+            return hasStreams;
         }
 
         public bool ImageCaptureEnabled(BaseItem item, LibraryOptions libraryOptions)
@@ -246,10 +250,11 @@ namespace StrmAssistant.Common
                     resultItems = resultItems.Concat(incomingItems).ToList();
                 }
 
-                if (libraryIds != null && libraryIds.Any(id => id != "-1") && LibraryPathsInScope.Any())
+                var scopePaths = LibraryPathsInScope; // 捕获 volatile 引用
+                if (libraryIds != null && libraryIds.Any(id => id != "-1") && scopePaths.Any())
                 {
                     var filteredItems = incomingItems
-                        .Where(i => LibraryPathsInScope.Any(p => i.ContainingFolderPath.StartsWith(p)))
+                        .Where(i => scopePaths.Any(p => i.ContainingFolderPath.StartsWith(p)))
                         .ToList();
                     resultItems = resultItems.Concat(filteredItems).ToList();
                 }

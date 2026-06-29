@@ -29,13 +29,6 @@ namespace StrmAssistant.Options.View
 
         public override Task<IPluginUIView> RunCommand(string itemId, string commandId, string data)
         {
-            switch (commandId)
-            {
-                case "DisclaimerDialog":
-                    var disclaimerDialog = new DisclaimerDialogView(_pluginInfo);
-                    return Task.FromResult<IPluginUIView>(disclaimerDialog);
-            }
-
             return base.RunCommand(itemId, commandId, data);
         }
 

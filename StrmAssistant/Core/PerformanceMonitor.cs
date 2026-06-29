@@ -13,7 +13,7 @@ namespace StrmAssistant.Core
     /// </summary>
     public class PerformanceMonitor
     {
-        private static PerformanceMonitor _instance;
+        private static volatile PerformanceMonitor _instance;
         private static readonly object _lock = new object();
         
         private readonly ILogger _logger;

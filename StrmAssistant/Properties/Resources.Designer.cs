@@ -70,33 +70,6 @@ namespace StrmAssistant.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Language.
-        /// </summary>
-        public static string AboutOptions_DefaultUICulture_Language {
-            get {
-                return ResourceManager.GetString("AboutOptions_DefaultUICulture_Language", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to plugin UI language description.
-        /// </summary>
-        public static string AboutOptions_DefaultUICulture_Description {
-            get {
-                return ResourceManager.GetString("AboutOptions_DefaultUICulture_Description", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized string similar to Auto.
-        /// </summary>
-        public static string AboutOptions_DefaultUICulture_Auto {
-            get {
-                return ResourceManager.GetString("AboutOptions_DefaultUICulture_Auto", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///   Looks up a localized string similar to Are you sure you wish to continue?.
         /// </summary>
         public static string AreYouSureToContinue {

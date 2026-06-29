@@ -21,6 +21,11 @@ namespace StrmAssistant.Common
         public static readonly Version Version4910 = new Version("4.9.1.0");
         public static readonly Version Version49180 = new Version("4.9.1.80");
         public static readonly Version Version49190 = new Version("4.9.1.90");
+        public static readonly Version Version4920 = new Version("4.9.2.0");
+        public static readonly Version Version4930 = new Version("4.9.3.0");
+        public static readonly Version Version4940 = new Version("4.9.4.0");
+        public static readonly Version Version4950 = new Version("4.9.5.0");
+        public static readonly Version Version41000 = new Version("4.10.0.0");
         
         /// <summary>
         /// 当前版本（兼容性包装）

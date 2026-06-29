@@ -208,12 +208,12 @@ namespace StrmAssistant.Mod
         {
             var instance = metadataResult.Item;
 
-            if (IsChinese(instance.Name))
+            if (IsChinese(instance.Name) && !IsJapanese(instance.Name))
             {
                 instance.Name = ConvertTraditionalToSimplified(instance.Name);
             }
 
-            if (IsChinese(instance.Overview))
+            if (IsChinese(instance.Overview) && !IsJapanese(instance.Overview))
             {
                 instance.Overview = ConvertTraditionalToSimplified(instance.Overview);
             }
@@ -241,7 +241,7 @@ namespace StrmAssistant.Mod
                     {
                         case 0:
                         {
-                            if (IsChinese(name))
+                            if (IsChinese(name) && !IsJapanese(name))
                             {
                                 nameProperty.SetValue(ConvertTraditionalToSimplified(name));
                             }
@@ -256,7 +256,7 @@ namespace StrmAssistant.Mod
                         {
                             var overview = overviewProperty.GetValue()?.ToString();
 
-                            if (IsChinese(overview))
+                            if (IsChinese(overview) && !IsJapanese(overview))
                             {
                                 overview = ConvertTraditionalToSimplified(overview);
                                 overviewProperty.SetValue(overview);
@@ -302,7 +302,7 @@ namespace StrmAssistant.Mod
                 {
                     var name = nameProperty.GetValue()?.ToString();
 
-                    if (IsChinese(name))
+                    if (IsChinese(name) && !IsJapanese(name))
                     {
                         nameProperty.SetValue(ConvertTraditionalToSimplified(name));
                     }
@@ -374,7 +374,7 @@ namespace StrmAssistant.Mod
                     var name = nameProperty.GetValue()?.ToString();
                     var overview = overviewProperty.GetValue()?.ToString();
 
-                    if (IsChinese(name))
+                    if (IsChinese(name) && !IsJapanese(name))
                     {
                         nameProperty.SetValue(ConvertTraditionalToSimplified(name));
                     }
@@ -384,7 +384,7 @@ namespace StrmAssistant.Mod
                         nameProperty.SetValue($"第 {searchInfo.IndexNumber} 集");
                     }
 
-                    if (IsChinese(overview))
+                    if (IsChinese(overview) && !IsJapanese(overview))
                     {
                         overviewProperty.SetValue(ConvertTraditionalToSimplified(overview));
                     }

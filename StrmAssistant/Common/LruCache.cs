@@ -49,14 +49,23 @@ namespace StrmAssistant.Common
 
         public bool TryGetFromCache<T>(string key, out T value) where T : class
         {
-            _lock.EnterWriteLock();
+            _lock.EnterUpgradeableReadLock();
             try
             {
                 value = default;
                 if (_cacheMap.TryGetValue(key, out var node))
                 {
-                    _orderList.Remove(node);
-                    _orderList.AddFirst(node);
+                    // 提升到写锁以更新LRU顺序
+                    _lock.EnterWriteLock();
+                    try
+                    {
+                        _orderList.Remove(node);
+                        _orderList.AddFirst(node);
+                    }
+                    finally
+                    {
+                        _lock.ExitWriteLock();
+                    }
 
                     value = node.Value.Value as T;
                     return true;
@@ -66,7 +75,7 @@ namespace StrmAssistant.Common
             }
             finally
             {
-                _lock.ExitWriteLock();
+                _lock.ExitUpgradeableReadLock();
             }
         }
 

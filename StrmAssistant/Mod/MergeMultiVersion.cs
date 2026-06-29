@@ -164,13 +164,32 @@ namespace StrmAssistant.Mod
             return false;
         }
 
+        private static bool IsValidProviderId(string id)
+        {
+            // 无效的tmdbid/tvdbid不参与合并 (v3.0.0.26)
+            if (string.IsNullOrWhiteSpace(id)) return false;
+            if (id.Trim() == "0") return false;
+            return true;
+        }
+
         private static BaseItem[] GetAllCollectionFolders(Series series)
         {
-            if (!(series.HasProviderId(MetadataProviders.Tmdb) || series.HasProviderId(MetadataProviders.Imdb) ||
-                  series.HasProviderId(MetadataProviders.Tvdb)))
+            var tmdbId = series.GetProviderId(MetadataProviders.Tmdb);
+            var imdbId = series.GetProviderId(MetadataProviders.Imdb);
+            var tvdbId = series.GetProviderId(MetadataProviders.Tvdb);
+
+            if (!(IsValidProviderId(tmdbId) || IsValidProviderId(imdbId) || IsValidProviderId(tvdbId)))
             {
                 return Array.Empty<BaseItem>();
             }
+
+            var providerIds = new List<KeyValuePair<string, string>>();
+            if (IsValidProviderId(tmdbId))
+                providerIds.Add(new KeyValuePair<string, string>(MetadataProviders.Tmdb.ToString(), tmdbId));
+            if (IsValidProviderId(imdbId))
+                providerIds.Add(new KeyValuePair<string, string>(MetadataProviders.Imdb.ToString(), imdbId));
+            if (IsValidProviderId(tvdbId))
+                providerIds.Add(new KeyValuePair<string, string>(MetadataProviders.Tvdb.ToString(), tvdbId));
 
             var allSeries = BaseItem.LibraryManager.GetItemList(new InternalItemsQuery
             {
@@ -178,15 +197,7 @@ namespace StrmAssistant.Mod
                 Recursive = false,
                 ExcludeItemIds = new[] { series.InternalId },
                 IncludeItemTypes = new[] { nameof(Series) },
-                AnyProviderIdEquals = new List<KeyValuePair<string, string>>
-                {
-                    new KeyValuePair<string, string>(MetadataProviders.Tmdb.ToString(),
-                        series.GetProviderId(MetadataProviders.Tmdb)),
-                    new KeyValuePair<string, string>(MetadataProviders.Imdb.ToString(),
-                        series.GetProviderId(MetadataProviders.Imdb)),
-                    new KeyValuePair<string, string>(MetadataProviders.Tvdb.ToString(),
-                        series.GetProviderId(MetadataProviders.Tvdb))
-                }
+                AnyProviderIdEquals = providerIds
             }).Concat(new[] { series }).ToList();
 
             var collectionFolders = new HashSet<BaseItem>();

@@ -44,7 +44,7 @@ namespace StrmAssistant.Common
         private readonly MethodInfo _updateSequencesForSeason;
         private readonly FieldInfo _timeoutMs;
 
-        public static List<string> LibraryPathsInScope;
+        public static volatile List<string> LibraryPathsInScope = new List<string>();
 
         public FingerprintApi(ILibraryManager libraryManager, IFileSystem fileSystem,
             IApplicationPaths applicationPaths, IFfmpegManager ffmpegManager, IMediaEncoder mediaEncoder,
@@ -317,7 +317,8 @@ namespace StrmAssistant.Common
 
         public bool IsLibraryInScope(BaseItem item)
         {
-            return !string.IsNullOrEmpty(item.Path) && LibraryPathsInScope.Any(l => item.Path.StartsWith(l));
+            var paths = LibraryPathsInScope; // 捕获 volatile 引用
+            return !string.IsNullOrEmpty(item.Path) && paths.Any(l => item.Path.StartsWith(l));
         }
 
         public void UpdateLibraryPathsInScope(string currentScope)
@@ -371,13 +372,15 @@ namespace StrmAssistant.Common
 
         public long[] GetAllFavoriteSeasons()
         {
-            var favorites = LibraryApi.AllUsers.Select(e => e.Key)
+            var users = LibraryApi.AllUsers; // 捕获 volatile 引用
+            var scopePaths = LibraryPathsInScope; // 捕获 volatile 引用
+            var favorites = users.Select(e => e.Key)
                 .SelectMany(u => _libraryManager.GetItemList(new InternalItemsQuery
                 {
                     User = u,
                     IsFavorite = true,
                     IncludeItemTypes = new[] { nameof(Series), nameof(Episode) },
-                    PathStartsWithAny = LibraryPathsInScope.ToArray()
+                    PathStartsWithAny = scopePaths.ToArray()
                 }))
                 .GroupBy(i => i.InternalId)
                 .Select(g => g.First())
@@ -403,7 +406,8 @@ namespace StrmAssistant.Common
             var resultItems = new List<Episode>();
             var incomingItems = items.OfType<Episode>().ToList();
 
-            if (IsCatchupTaskSelected(GeneralOptions.CatchupTask.Fingerprint) && LibraryPathsInScope.Any())
+            var scopePaths = LibraryPathsInScope; // 捕获 volatile 引用
+            if (IsCatchupTaskSelected(GeneralOptions.CatchupTask.Fingerprint) && scopePaths.Any())
             {
                 if (includeFavorites)
                 {
@@ -414,7 +418,7 @@ namespace StrmAssistant.Common
                 if (libraryIds is null || !libraryIds.Any() || libraryIds.Any(id => id != "-1"))
                 {
                     var filteredItems = incomingItems
-                        .Where(i => LibraryPathsInScope.Any(p => i.ContainingFolderPath.StartsWith(p)))
+                        .Where(i => scopePaths.Any(p => i.ContainingFolderPath.StartsWith(p)))
                         .ToList();
                     resultItems = resultItems.Concat(filteredItems).ToList();
                 }
@@ -480,9 +484,10 @@ namespace StrmAssistant.Common
             }
             else
             {
-                if (LibraryPathsInScope.Any())
+                var scopePaths = LibraryPathsInScope; // 捕获 volatile 引用
+                if (scopePaths.Any())
                 {
-                    itemsFingerprintQuery.PathStartsWithAny = LibraryPathsInScope.ToArray();
+                    itemsFingerprintQuery.PathStartsWithAny = scopePaths.ToArray();
                 }
 
                 var blackListSeasons = GetAllBlacklistSeasons();
@@ -538,9 +543,10 @@ namespace StrmAssistant.Common
             }
             else
             {
-                if (LibraryPathsInScope.Any())
+                var scopePaths = LibraryPathsInScope; // 捕获 volatile 引用
+                if (scopePaths.Any())
                 {
-                    itemsFingerprintQuery.PathStartsWithAny = LibraryPathsInScope.ToArray();
+                    itemsFingerprintQuery.PathStartsWithAny = scopePaths.ToArray();
                 }
 
                 var blackListSeasons = GetAllBlacklistSeasons();

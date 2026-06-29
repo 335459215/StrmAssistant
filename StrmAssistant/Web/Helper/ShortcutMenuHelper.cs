@@ -32,10 +32,12 @@ namespace StrmAssistant.Web.Helper
         private static MemoryStream GetResourceStream(string resourceName)
         {
             var name = typeof(Plugin).Namespace + ".Web.Resources." + resourceName;
-            var manifestResourceStream = typeof (ShortcutMenuHelper).GetTypeInfo().Assembly.GetManifestResourceStream(name);
-            var destination = new MemoryStream((int) manifestResourceStream.Length);
-            manifestResourceStream.CopyTo((Stream) destination);
-            return destination;
+            using (var manifestResourceStream = typeof(ShortcutMenuHelper).GetTypeInfo().Assembly.GetManifestResourceStream(name))
+            {
+                var destination = new MemoryStream((int)manifestResourceStream.Length);
+                manifestResourceStream.CopyTo((Stream)destination);
+                return destination;
+            }
         }
 
         public static void Dispose()

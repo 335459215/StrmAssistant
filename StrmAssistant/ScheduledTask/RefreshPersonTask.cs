@@ -18,14 +18,14 @@ using static StrmAssistant.Common.LanguageUtility;
 
 namespace StrmAssistant.ScheduledTask
 {
-    public class RefreshPersonTask : IScheduledTask
+    public class RefreshPersonTask : IScheduledTask, IConfigurableScheduledTask
     {
         private readonly ILogger _logger;
         private readonly ILibraryManager _libraryManager;
 
         private static readonly HashSet<string> ProviderIdCheckKeys =
             new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "tmdb", "imdb", "tvdb" };
-        private static readonly Random Random = new Random();
+        // Random.Shared is thread-safe (.NET 6+)
 
         public RefreshPersonTask(ILibraryManager libraryManager)
         {
@@ -189,7 +189,7 @@ namespace StrmAssistant.ScheduledTask
                             try
                             {
                                 await Task.Delay(
-                                        Random.Next(0,
+                                        Random.Shared.Next(0,
                                             Math.Max(0,
                                                 tier2MaxConcurrentCount - QueueManager.Tier2Semaphore.CurrentCount) *
                                             MetadataApi.RequestIntervalMs), cancellationToken)
@@ -321,6 +321,10 @@ namespace StrmAssistant.ScheduledTask
         {
             return Array.Empty<TaskTriggerInfo>();
         }
+
+        public bool IsHidden => false;
+        public bool IsEnabled => true;
+        public bool IsLogged => true;
 
         public static bool IsRunning { get; private set; }
 

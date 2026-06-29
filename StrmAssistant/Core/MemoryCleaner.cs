@@ -17,7 +17,7 @@ namespace StrmAssistant.Core
     /// </summary>
     public class MemoryCleaner : IDisposable
     {
-        private static MemoryCleaner _instance;
+        private static volatile MemoryCleaner _instance;
         private static readonly object _lock = new object();
 
         private readonly ILogger _logger;

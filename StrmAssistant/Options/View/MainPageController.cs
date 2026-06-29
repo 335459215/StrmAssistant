@@ -32,7 +32,7 @@ namespace StrmAssistant.Options.View
                 DisplayName = Resources.ResourceManager.GetString("PluginOptions_EditorTitle_Strm_Assistant",
                     Plugin.Instance.DefaultUICulture),
                 MenuIcon = "video_settings",
-                IsMainConfigPage = false,
+                IsMainConfigPage = true,
             };
 
             _tabPages.Add(new TabPageController(pluginInfo, nameof(MediaInfoExtractPageView),

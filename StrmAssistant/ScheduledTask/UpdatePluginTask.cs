@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace StrmAssistant.ScheduledTask
 {
-    public class UpdatePluginTask : IScheduledTask
+    public class UpdatePluginTask : IScheduledTask, IConfigurableScheduledTask
     {
         private readonly ILogger _logger;
         private readonly IApplicationHost _applicationHost;
@@ -61,11 +61,14 @@ namespace StrmAssistant.ScheduledTask
 
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
         {
+            // Fixed default: daily at 3:00 AM
+            // 原版使用 Random.Shared 导致每次调用产生不同值，
+            // 热重载后新ID找不到旧配置文件 → 回退到GetDefaultTriggers →
+            // 每次生成随机触发器覆盖用户配置
             yield return new TaskTriggerInfo
             {
-                Type = TaskTriggerInfo.TriggerWeekly,
-                DayOfWeek = (DayOfWeek)new Random().Next(7),
-                TimeOfDayTicks = TimeSpan.FromMinutes(new Random().Next(24 * 4) * 15).Ticks
+                Type = TaskTriggerInfo.TriggerDaily,
+                TimeOfDayTicks = TimeSpan.FromHours(3).Ticks
             };
         }
 
@@ -129,20 +132,13 @@ namespace StrmAssistant.ScheduledTask
                                      })
                                      .ConfigureAwait(false))
                     {
-                        using (var memoryStream = new MemoryStream())
+                        var dllFilePath = Path.Combine(_applicationPaths.PluginsPath, PluginAssemblyFilename);
+
+                        await using (var fileStream =
+                                     new FileStream(dllFilePath, FileMode.Create, FileAccess.Write))
                         {
-                            await responseStream.CopyToAsync(memoryStream, 81920, cancellationToken)
+                            await responseStream.CopyToAsync(fileStream, 81920, cancellationToken)
                                 .ConfigureAwait(false);
-
-                            memoryStream.Seek(0, SeekOrigin.Begin);
-                            var dllFilePath = Path.Combine(_applicationPaths.PluginsPath, PluginAssemblyFilename);
-
-                            await using (var fileStream =
-                                         new FileStream(dllFilePath, FileMode.Create, FileAccess.Write))
-                            {
-                                await memoryStream.CopyToAsync(fileStream, 81920, cancellationToken)
-                                    .ConfigureAwait(false);
-                            }
                         }
                     }
 
@@ -187,8 +183,20 @@ namespace StrmAssistant.ScheduledTask
 
         private static Version ParseVersion(string v)
         {
-            return new Version(v.StartsWith("v") ? v.Substring(1) : v);
+            if (string.IsNullOrWhiteSpace(v)) return new Version(0, 0);
+            try
+            {
+                return new Version(v.StartsWith("v") ? v.Substring(1) : v);
+            }
+            catch (ArgumentException)
+            {
+                return new Version(0, 0);
+            }
         }
+
+        public bool IsEnabled => true;
+        public bool IsHidden => false;
+        public bool IsLogged => true;
 
         internal class ApiResponseInfo
         {

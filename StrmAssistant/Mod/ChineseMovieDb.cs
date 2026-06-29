@@ -320,12 +320,12 @@ namespace StrmAssistant.Mod
         {
             if (__state)
             {
-                if (IsChinese(item.Name))
+                if (IsChinese(item.Name) && !IsJapanese(item.Name))
                 {
                     item.Name = ConvertTraditionalToSimplified(item.Name);
                 }
 
-                if (IsChinese(item.Overview))
+                if (IsChinese(item.Overview) && !IsJapanese(item.Overview))
                 {
                     item.Overview = ConvertTraditionalToSimplified(item.Overview);
                 }

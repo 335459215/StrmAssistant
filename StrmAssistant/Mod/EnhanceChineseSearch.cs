@@ -1115,6 +1115,14 @@ namespace StrmAssistant.Mod
 
         private static string GetTokenizerResourceName()
         {
+            // ARM64/aarch64 没有预编译的 libsimple.so，跳过
+            if (RuntimeInformation.OSArchitecture == Architecture.Arm64 ||
+                RuntimeInformation.OSArchitecture == Architecture.Arm)
+            {
+                Plugin.Instance.Logger.Info("EnhanceChineseSearch - ARM platform detected, skipping native tokenizer (no prebuilt binary available)");
+                return null;
+            }
+
             var tokenizerNamespace = Assembly.GetExecutingAssembly().GetName().Name + ".Tokenizer";
             var winSimpleTokenizer = $"{tokenizerNamespace}.win.libsimple.so";
             var linuxSimpleTokenizer = $"{tokenizerNamespace}.linux.libsimple.so";
@@ -1274,6 +1282,18 @@ namespace StrmAssistant.Mod
                 return true;
             }
 
+            // ARM64 兼容：在 ARM/ARM64 平台上 sqlite3_load_extension 可能加载不兼容的 libsimple.so
+            // 必须在 LoadTokenizerExtension 入口处检查架构，避免加载 x86_64 .so 导致 SIGILL/SIGSEGV
+            if (RuntimeInformation.OSArchitecture == Architecture.Arm64 ||
+                RuntimeInformation.OSArchitecture == Architecture.Arm)
+            {
+                Plugin.Instance.Logger.Info("EnhanceChineseSearch - ARM platform detected, skipping external tokenizer loading");
+                _useUnicode61Mode = true;
+                _simpleQueryAvailable = false;
+                _tokenizerReady = true;
+                return true;
+            }
+
             // 3. 尝试加载外部 libsimple.so（不一定能成功，失败不致命，会回退到 unicode61 模式）
             try
             {
@@ -1289,27 +1309,37 @@ namespace StrmAssistant.Mod
                     return false;
                 }
 
-                var db = sqlite3_db.GetValue(connection);
-                if (db == null)
+                var dbObj = sqlite3_db.GetValue(connection);
+                if (dbObj == null)
                 {
                     Plugin.Instance.Logger.Warn("EnhanceChineseSearch - Could not get SQLite database handle");
                     return false;
                 }
 
+                // 安全提取原生 SQLite 句柄（ARM64 兼容）
+                // 在 ARM64 上，db 字段可能为 SafeHandle 子类，必须通过 ExtractSqliteHandle 提取底层 IntPtr
+                var dbHandle = ExtractSqliteHandle(dbObj);
+                if (dbHandle == IntPtr.Zero)
+                {
+                    Plugin.Instance.Logger.Warn("EnhanceChineseSearch - Could not extract native SQLite handle from db object");
+                    return false;
+                }
+
                 // 使用 SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION (1005) 启用 C 级扩展加载（不启用 SQL load_extension()）
                 // 这是 Pro 代码使用的方式：raw.sqlite3_db_config(db, 1005, 1, ref pOk)
+                // 注意：sqlite3_db_config 通过反射调用，第一个参数应为 IntPtr（原生句柄），而非包装对象
                 var pOk = 0;
-                var dbConfigArgs = new object[] { db, 1005, 1, pOk };
+                var dbConfigArgs = new object[] { dbHandle, 1005, 1, pOk };
                 sqlite3_db_config.Invoke(null, dbConfigArgs);
                 try
                 {
-                    LoadTokenizerExtensionNative(db);
+                    LoadTokenizerExtensionNative(dbHandle);
                 }
                 finally
                 {
                     // 恢复：禁用扩展加载
-                    var restoreArgs = new object[] { db, 1005, 0, pOk };
-                    try { sqlite3_db_config.Invoke(null, restoreArgs); } catch { }
+                    var restoreArgs = new object[] { dbHandle, 1005, 0, pOk };
+                    try { sqlite3_db_config.Invoke(null, restoreArgs); } catch (Exception ex) { Plugin.Instance.Logger.Debug($"EnhanceChineseSearch - sqlite3_db_config restore failed: {ex.Message}"); }
                 }
 
                 // Validate the simple tokenizer is actually available
@@ -1385,8 +1415,12 @@ namespace StrmAssistant.Mod
 
             try
             {
-                var db = sqlite3_db?.GetValue(connection);
-                if (db == null) return;
+                var dbObj = sqlite3_db?.GetValue(connection);
+                if (dbObj == null) return;
+
+                // 安全提取原生 SQLite 句柄（ARM64 兼容）
+                var db = ExtractSqliteHandle(dbObj);
+                if (db == IntPtr.Zero) return;
 
                 var pOk = 0;
                 var dbConfigArgs = new object[] { db, 1005, 1, pOk };
@@ -1398,7 +1432,7 @@ namespace StrmAssistant.Mod
                 finally
                 {
                     var restoreArgs = new object[] { db, 1005, 0, pOk };
-                    try { sqlite3_db_config.Invoke(null, restoreArgs); } catch { }
+                    try { sqlite3_db_config.Invoke(null, restoreArgs); } catch (Exception ex) { Plugin.Instance.Logger.Debug($"EnhanceChineseSearch - sqlite3_db_config restore failed: {ex.Message}"); }
                 }
 
                 _loadedConnections.GetOrCreateValue(connection);
@@ -1478,18 +1512,14 @@ namespace StrmAssistant.Mod
                 "EnhanceChineseSearch - Could not resolve sqlite3_load_extension from any candidate library");
         }
 
-        private static void LoadTokenizerExtensionNative(object db)
+        private static void LoadTokenizerExtensionNative(IntPtr dbHandle)
         {
-            var handle = ExtractSqliteHandle(db);
+            // dbHandle 已经是原生 SQLite 句柄（由 ExtractSqliteHandle 提取），无需再次提取
+            var handle = dbHandle;
             if (handle == IntPtr.Zero)
             {
-                var type = db?.GetType();
-                var fields = type == null
-                    ? string.Empty
-                    : string.Join(", ", type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                        .Select(f => $"{f.Name}:{f.FieldType.FullName}"));
                 throw new InvalidOperationException(
-                    $"Unable to extract native SQLite handle from {type?.FullName}. Fields=[{fields}]");
+                    "Unable to load tokenizer extension: native SQLite handle is IntPtr.Zero");
             }
 
             EnsureLoadExtensionResolved();
@@ -1538,8 +1568,8 @@ namespace StrmAssistant.Mod
                     $"EnhanceChineseSearch - DllImport e_sqlite3 rc={rcE}, err={errE ?? "(null)"}, trying system sqlite3");
                 if (errPtrE != IntPtr.Zero) sqlite3_free_e(errPtrE);
             }
-            catch (DllNotFoundException) { }
-            catch (EntryPointNotFoundException) { }
+            catch (DllNotFoundException) { Plugin.Instance.Logger.Debug("EnhanceChineseSearch - e_sqlite3 DllNotFoundException: native library not found, skipping"); }
+            catch (EntryPointNotFoundException) { Plugin.Instance.Logger.Debug("EnhanceChineseSearch - e_sqlite3 EntryPointNotFoundException: function not found, skipping"); }
             catch (Exception ex)
             {
                 Plugin.Instance.Logger.Warn(
@@ -1756,8 +1786,13 @@ namespace StrmAssistant.Mod
             }
 
             var term = searchTerm.Replace(".", string.Empty).Replace("'", string.Empty);
+            // 清理FTS5特殊操作符，防止搜索异常 (v3.0.0.45)
+            foreach (var c in new[] { '"', '(', ')', '*', ':', '^', '$', '+', '-', '{', '}', '~' })
+            {
+                term = term.Replace(c.ToString(), string.Empty);
+            }
 
-            if (_traditionalToSimplified && IsChinese(term))
+            if (_traditionalToSimplified && IsChinese(term) && !IsJapanese(term))
             {
                 term = ConvertTraditionalToSimplified(term);
             }

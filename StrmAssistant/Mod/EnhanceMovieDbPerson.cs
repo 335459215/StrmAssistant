@@ -119,7 +119,7 @@ namespace StrmAssistant.Mod
             var considerJapanese = isJapaneseFallback && !string.IsNullOrEmpty(placeOfBirth) &&
                                    placeOfBirth.Contains("Japan", StringComparison.Ordinal);
 
-            if (IsChinese(input))
+            if (IsChinese(input) && !IsJapanese(input))
             {
                 input = ConvertTraditionalToSimplified(input);
             }

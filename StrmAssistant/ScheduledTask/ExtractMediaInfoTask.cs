@@ -11,7 +11,7 @@ using static StrmAssistant.Options.MediaInfoExtractOptions;
 
 namespace StrmAssistant.ScheduledTask
 {
-    public class ExtractMediaInfoTask : IScheduledTask
+    public class ExtractMediaInfoTask : IScheduledTask, IConfigurableScheduledTask
     {
         private readonly ILogger _logger = Plugin.Instance.Logger;
 
@@ -40,7 +40,7 @@ namespace StrmAssistant.ScheduledTask
 
             if (hasItems) IsRunning = true;
 
-            double total = items.Count;
+            double total = items.Count > 0 ? items.Count : 1; // 避免除零
             var index = 0;
             var current = 0;
             var skip = 0;
@@ -110,8 +110,11 @@ namespace StrmAssistant.ScheduledTask
                         }
                         catch (Exception e)
                         {
-                            _logger.Error($"MediaInfoExtract - Item failed: {taskItem.Name} - {taskItem.Path}");
-                            _logger.Error(e.Message);
+                            _logger.Error($"MediaInfoExtract - Item failed: {taskItem.Name} - {taskItem.Path} - {e.Message}");
+                            if (e.InnerException != null)
+                            {
+                                _logger.Debug($"MediaInfoExtract - Inner exception: {e.InnerException.Message}");
+                            }
                             _logger.Debug(e.StackTrace);
                         }
                         finally
@@ -197,6 +200,10 @@ namespace StrmAssistant.ScheduledTask
         {
             return Array.Empty<TaskTriggerInfo>();
         }
+
+        public bool IsHidden => false;
+        public bool IsEnabled => true;
+        public bool IsLogged => true;
 
         public static bool IsRunning { get; private set; }
     }

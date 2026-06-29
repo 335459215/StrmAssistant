@@ -13,7 +13,6 @@ namespace StrmAssistant.Options
 {
     public class AboutOptions : EditableOptionsBase
     {
-        public const string UICultureAuto = "auto";
 
         [DisplayNameL("AboutOptions_EditorTitle_About", typeof(Resources))]
         public override string EditorTitle => Resources.AboutOptions_EditorTitle_About;
@@ -23,10 +22,8 @@ namespace StrmAssistant.Options
         [Browsable(false)]
         public List<EditorSelectOption> UICultureList { get; set; } = new List<EditorSelectOption>();
 
-        [DisplayNameL("AboutOptions_DefaultUICulture_Language", typeof(Resources))]
-        [DescriptionL("AboutOptions_DefaultUICulture_Description", typeof(Resources))]
-        [SelectItemsSource(nameof(UICultureList))]
-        public string DefaultUICulture { get; set; } = UICultureAuto;
+        [Browsable(false)]
+        public string DefaultUICulture { get; set; } = "zh-CN";
 
         [Browsable(false)]
         public bool DebugMode { get; set; } = false;
@@ -57,17 +54,7 @@ namespace StrmAssistant.Options
 
         public void Initialize()
         {
-            UICultureList.Clear();
-            UICultureList.Add(new EditorSelectOption
-            {
-                Value = UICultureAuto,
-                Name = Resources.ResourceManager.GetString("AboutOptions_DefaultUICulture_Auto",
-                    Plugin.Instance.DefaultUICulture),
-                IsEnabled = true
-            });
-            UICultureList.Add(new EditorSelectOption { Value = "en-US", Name = "English", IsEnabled = true });
-            UICultureList.Add(new EditorSelectOption { Value = "zh-CN", Name = "简体中文", IsEnabled = true });
-            UICultureList.Add(new EditorSelectOption { Value = "zh-Hant", Name = "繁體中文", IsEnabled = true });
+            // UICultureList removed - language is hardcoded to zh-CN
 
             VersionInfoList.Clear();
 

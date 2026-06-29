@@ -15,6 +15,14 @@ namespace StrmAssistant.Mod
             PatchTracker = new PatchTracker(typeof(T), PatchApproach.Harmony);
         }
 
+        /// <summary>
+        /// 清理静态 Instance 引用，用于插件热重载时防止旧实例泄漏
+        /// </summary>
+        public static void ClearInstance()
+        {
+            Instance = null;
+        }
+
         protected void Initialize()
         {
             PatchTracker.Status = PatchStatus.Initializing;
