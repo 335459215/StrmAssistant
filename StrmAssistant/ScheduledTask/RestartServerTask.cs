@@ -22,7 +22,9 @@ namespace StrmAssistant.ScheduledTask
 
         public string Key => "RestartServerTask";
 
-        public string Name => "Restart Server";
+        public string Name => Resources.ResourceManager.GetString("RestartServerTask_Name_Restart_Server",
+            Plugin.Instance.DefaultUICulture);
+        //public string Name => "Restart Server";
 
         public string Description => Resources.ResourceManager.GetString(
             "RestartServerTask_Description_Restarts_the_Embymedia_server",

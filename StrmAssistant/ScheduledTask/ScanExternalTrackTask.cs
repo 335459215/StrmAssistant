@@ -165,7 +165,9 @@ namespace StrmAssistant.ScheduledTask
             "ScanExternalTrackTask_Description_Scans_external_audio_tracks_for_videos",
             Plugin.Instance.DefaultUICulture) ?? "Scans external audio tracks for videos";
 
-        public string Name => "Scan External Tracks";
+        public string Name => Resources.ResourceManager.GetString("ScanExternalTrackTask_Name_Scan_External_Tracks",
+            Plugin.Instance.DefaultUICulture);
+        //public string Name => "Scan External Tracks";
 
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
         {

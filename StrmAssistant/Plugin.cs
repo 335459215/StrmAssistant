@@ -309,6 +309,7 @@ namespace StrmAssistant
             IntroDbProvider = new UnifiedIntroDbProvider(jsonSerializer);
             MarkerProtector = new IntroMarkerProtector(itemRepository);
             ShortcutMenuHelper.Initialize(configurationManager);
+            ScriptInjectHelper.Initialize(configurationManager);
 
             if (MainOptionsStore.GetOptions().GeneralOptions.CatchupMode) QueueManager.Initialize();
             if (IntroSkipStore.GetOptions().EnableIntroSkip) PlaySessionMonitor.Initialize();
@@ -628,6 +629,7 @@ namespace StrmAssistant
                 PlaySessionMonitor?.Dispose();
                 PatchManager.CleanupPatches();
                 ShortcutMenuHelper.Dispose();
+                ScriptInjectHelper.Dispose();
 
                 _pages?.Clear();
 

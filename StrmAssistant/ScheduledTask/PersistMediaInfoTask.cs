@@ -152,9 +152,9 @@ namespace StrmAssistant.ScheduledTask
         public string Description => Resources.ResourceManager.GetString(
             "PersistMediaInfoTask_Description_Persists_media_info_to_json_file", Plugin.Instance.DefaultUICulture);
 
-        public string Name => "Persist MediaInfo";
-        //public string Name => Resources.ResourceManager.GetString("PersistMediaInfoTask_Name_Persist_MediaInfo",
-        //    Plugin.Instance.DefaultUICulture);
+        public string Name => Resources.ResourceManager.GetString("PersistMediaInfoTask_Name_Persist_MediaInfo",
+            Plugin.Instance.DefaultUICulture);
+        //public string Name => "Persist MediaInfo";
 
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
         {

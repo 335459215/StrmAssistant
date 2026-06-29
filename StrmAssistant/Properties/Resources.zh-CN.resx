@@ -368,6 +368,33 @@
   <data name="UpdatePluginTask_Description_Updates_plugin_to_the_latest_version" xml:space="preserve">
     <value>更新本插件至最新版</value>
   </data>
+  <data name="BuildDoubanCacheTask_Name_Build_Douban_Cache" xml:space="preserve">
+    <value>构建豆瓣评分缓存</value>
+  </data>
+  <data name="DeletePersonTask_Name_Delete_Persons" xml:space="preserve">
+    <value>清除所有人员</value>
+  </data>
+  <data name="ExtractVideoThumbnailTask_Name_Extract_Video_Thumbnail" xml:space="preserve">
+    <value>提取视频缩略图</value>
+  </data>
+  <data name="MergeMultiVersionTask_Name_Merge_Multi_Versions" xml:space="preserve">
+    <value>合并多版本</value>
+  </data>
+  <data name="RefreshEpisodeTask_Name_Refresh_Episode" xml:space="preserve">
+    <value>刷新剧集</value>
+  </data>
+  <data name="RestartServerTask_Name_Restart_Server" xml:space="preserve">
+    <value>重启服务器</value>
+  </data>
+  <data name="ScanExternalTrackTask_Name_Scan_External_Tracks" xml:space="preserve">
+    <value>扫描外挂音轨</value>
+  </data>
+  <data name="ScanExternalTrackTask_Description_Scans_external_audio_tracks_for_videos" xml:space="preserve">
+    <value>扫描视频的外挂音轨更新至媒体信息</value>
+  </data>
+  <data name="RestartServerTask_Description_Restarts_the_Embymedia_server" xml:space="preserve">
+    <value>重启Emby媒体服务器</value>
+  </data>
   <data name="Uninstall_Warning" xml:space="preserve">
     <value>警告：中文搜索增强未正常关闭，Emby 将无法工作。</value>
   </data>

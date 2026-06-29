@@ -189,7 +189,9 @@ namespace StrmAssistant.ScheduledTask
         public string Description => Resources.ResourceManager.GetString(
             "BuildDoubanCacheTask_Description_Build_Douban_rating_cache", Plugin.Instance.DefaultUICulture);
 
-        public string Name => "Build Douban Cache";
+        public string Name => Resources.ResourceManager.GetString("BuildDoubanCacheTask_Name_Build_Douban_Cache",
+            Plugin.Instance.DefaultUICulture);
+        //public string Name => "Build Douban Cache";
 
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
         {

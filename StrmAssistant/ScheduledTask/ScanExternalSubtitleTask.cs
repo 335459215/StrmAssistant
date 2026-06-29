@@ -162,10 +162,10 @@ namespace StrmAssistant.ScheduledTask
             "ScanExternalSubtitleTask_Description_Scans_external_subtitles_for_videos",
             Plugin.Instance.DefaultUICulture);
 
-        public string Name => "Scan External Subtitles";
-        //public string Name =>
-        //    Resources.ResourceManager.GetString("ScanExternalSubtitleTask_Name_Scan_External_Subtitles",
-        //        Plugin.Instance.DefaultUICulture);
+        public string Name =>
+            Resources.ResourceManager.GetString("ScanExternalSubtitleTask_Name_Scan_External_Subtitles",
+                Plugin.Instance.DefaultUICulture);
+        //public string Name => "Scan External Subtitles";
 
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
         {
