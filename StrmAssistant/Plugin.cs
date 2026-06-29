@@ -162,6 +162,8 @@ namespace StrmAssistant
             if (MainOptionsStore.GetOptions().AboutOptions.DebugMode)
             {
                 DebugMode = true;
+                // 保存配置确保第二个 Plugin 实例初始化时也能读到
+                try { MainOptionsStore.SavePluginOptionsSuppress(); } catch { }
             }
             else if (Debugger.IsAttached)
             {
