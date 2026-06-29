@@ -24,7 +24,7 @@ namespace StrmAssistant.Web.Service
                 (ReadOnlyMemory<byte>)ShortcutMenuHelper.StrmAssistantJs.GetBuffer(), "application/x-javascript");
         }
 
-        public object Get(GetShortcutMenu request)
+        public object Get(GetShortcutJs request)
         {
             return _resultFactory.GetResult(ShortcutMenuHelper.ModifiedShortcutsString.AsSpan(),
                 "application/x-javascript");

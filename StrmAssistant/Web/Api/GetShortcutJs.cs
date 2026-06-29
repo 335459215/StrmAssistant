@@ -5,7 +5,7 @@ namespace StrmAssistant.Web.Api
 {
     [Route("/{Web}/modules/shortcuts.js", "GET", IsHidden = true)]
     [Unauthenticated]
-    public class GetShortcutMenu
+    public class GetShortcutJs
     {
         public string Web { get; set; }
     }

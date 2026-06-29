@@ -74,7 +74,7 @@ namespace StrmAssistant.Web.Helper
                 _originalListControllerJs = ReadFile("modules/tabbedview/listcontroller.js", out var p7);
                 ListControllerJsPath = p7;
 
-                _originalFilterMenuJs = ReadFile("modules/filtermenu/filtermenu.js", out var p8);
+                _originalFilterMenuJs = ReadFile("modules/filtermenu/filtermenu.template.html", out var p8);
                 FilterMenuJsPath = p8;
 
                 _originalLibraryOptionsEditorJs = ReadFile("components/libraryoptionseditor/libraryoptionseditor.js", out var p9);

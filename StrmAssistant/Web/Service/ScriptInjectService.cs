@@ -23,6 +23,11 @@ namespace StrmAssistant.Web.Service
             return _resultFactory.GetResult(content.AsSpan(), "application/x-javascript");
         }
 
+        private object ReturnHtml(string content)
+        {
+            return _resultFactory.GetResult(content.AsSpan(), "text/html");
+        }
+
         // --- MediaInfo.js: Always inject, with douban rating check ---
         public object Get(GetMediaInfoJs request)
         {
@@ -79,12 +84,12 @@ namespace StrmAssistant.Web.Service
             return ReturnJs(modified);
         }
 
-        // --- FilterMenu.js: Conditional on douban assist enabled ---
+        // --- FilterMenu template.html: Conditional on douban assist enabled ---
         public object Get(GetFilterMenuHtml request)
         {
             var modified = ScriptInjectHelper.GetModifiedFilterMenuJs(true);
-            if (modified == null) return ReturnJs(ScriptInjectHelper.GetOriginalFilterMenuJs());
-            return ReturnJs(modified);
+            if (modified == null) return ReturnHtml(ScriptInjectHelper.GetOriginalFilterMenuJs());
+            return ReturnHtml(modified);
         }
 
         // --- LibraryOptionsEditor.js: Always inject ---

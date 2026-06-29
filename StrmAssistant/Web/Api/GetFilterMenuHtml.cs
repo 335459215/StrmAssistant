@@ -3,7 +3,7 @@ using MediaBrowser.Model.Services;
 
 namespace StrmAssistant.Web.Api
 {
-    [Route("/{Web}/modules/filtermenu/filtermenu.js", "GET", IsHidden = true)]
+    [Route("/{Web}/modules/filtermenu/filtermenu.template.html", "GET", IsHidden = true)]
     [Unauthenticated]
     public class GetFilterMenuHtml
     {
