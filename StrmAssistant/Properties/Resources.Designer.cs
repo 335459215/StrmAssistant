@@ -2465,5 +2465,131 @@ namespace StrmAssistant.Properties {
                 return ResourceManager.GetString("DashboardOptions_Show_system_info_on_dashboard", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 指纹检测.
+        /// </summary>
+        public static string IntroSkipOptions_IntroSkipFingerprintOptions_Fingerprint {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_IntroSkipFingerprintOptions_Fingerprint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 探测.
+        /// </summary>
+        public static string IntroSkipOptions_IntroSkipScrapeOptions_Scrape {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_IntroSkipScrapeOptions_Scrape", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 并行标记计算.
+        /// </summary>
+        public static string IntroSkipOptions_ParallelMarkerComputation_Parallel_Marker_Computation {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_ParallelMarkerComputation_Parallel_Marker_Computation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 启用并行指纹标记计算以提高性能。默认关闭.
+        /// </summary>
+        public static string IntroSkipOptions_ParallelMarkerComputation_Enables_parallel_computation_of_fingerprint_markers_to_improve_performance__Default_is_OFF_ {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_ParallelMarkerComputation_Enables_parallel_computation_of_fingerprint_markers_to_improve_performance__Default_is_OFF_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 排除关键词（可选）.
+        /// </summary>
+        public static string IntroSkipOptions_FingerprintExcludeKeywords_Optional_Exclude_Keywords {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_FingerprintExcludeKeywords_Optional_Exclude_Keywords", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 从指纹检测中排除的关键词，以逗号或分号分隔。默认为空.
+        /// </summary>
+        public static string IntroSkipOptions_FingerprintExcludeKeywords_Keywords_to_exclude_from_fingerprint_detection_separated_by_comma_or_semicolon__Default_is_EMPTY {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_FingerprintExcludeKeywords_Keywords_to_exclude_from_fingerprint_detection_separated_by_comma_or_semicolon__Default_is_EMPTY", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 统一IntroDb提供商.
+        /// </summary>
+        public static string IntroSkipOptions_UnifiedIntroDbProviders_Unified_IntroDb_Providers {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_UnifiedIntroDbProviders_Unified_IntroDb_Providers", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 按顺序尝试直到成功。默认为IntroDb,Tidb.
+        /// </summary>
+        public static string IntroSkipOptions_UnifiedIntroDbProviders_Tried_in_order_until_one_succeeds__Default_is_IntroDb_Tidb {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_UnifiedIntroDbProviders_Tried_in_order_until_one_succeeds__Default_is_IntroDb_Tidb", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to IntroDb API 密钥.
+        /// </summary>
+        public static string IntroSkipOptions_IntroDbApiKey_IntroDb_API_Key {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_IntroDbApiKey_IntroDb_API_Key", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 可选API密钥，提高每日使用限额.
+        /// </summary>
+        public static string IntroSkipOptions_IntroDbApiKey_Optional_API_key_for_higher_daily_usage_limits {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_IntroDbApiKey_Optional_API_key_for_higher_daily_usage_limits", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to TIDB API 密钥.
+        /// </summary>
+        public static string IntroSkipOptions_TidbApiKey_TIDB_API_Key {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_TidbApiKey_TIDB_API_Key", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to API密钥可提高每日使用限额.
+        /// </summary>
+        public static string IntroSkipOptions_TidbApiKey_API_key_increases_daily_usage_limits {
+            get {
+                return ResourceManager.GetString("IntroSkipOptions_TidbApiKey_API_key_increases_daily_usage_limits", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 内存使用限制（MB）.
+        /// </summary>
+        public static string MemoryOptions_MemoryUsageLimitMb_Memory_Usage_Limit__MB_ {
+            get {
+                return ResourceManager.GetString("MemoryOptions_MemoryUsageLimitMb_Memory_Usage_Limit__MB_", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to 空闲时内存超限15分钟则重启服务器。留空禁用.
+        /// </summary>
+        public static string MemoryOptions_MemoryUsageLimitMB_Restart_server_if_memory_exceeds_limit_for_15_minutes_during_idle__Leave_blank_to_disable_ {
+            get {
+                return ResourceManager.GetString("MemoryOptions_MemoryUsageLimitMB_Restart_server_if_memory_exceeds_limit_for_15_minutes_during_idle__Leave_blank_to_disable_", resourceCulture);
+            }
+        }
     }
 }

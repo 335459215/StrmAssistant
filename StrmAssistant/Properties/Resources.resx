@@ -938,4 +938,47 @@
   <data name="BuildDoubanCacheTask_Description_Build_Douban_rating_cache" xml:space="preserve">
     <value>构建豆瓣评分缓存，为媒体库中的电影和节目填充豆瓣评分</value>
   </data>
+  <data name="IntroSkipOptions_IntroSkipFingerprintOptions_Fingerprint" xml:space="preserve">
+    <value>指纹检测</value>
+  </data>
+  <data name="IntroSkipOptions_IntroSkipScrapeOptions_Scrape" xml:space="preserve">
+    <value>探测</value>
+  </data>
+  <data name="IntroSkipOptions_ParallelMarkerComputation_Parallel_Marker_Computation" xml:space="preserve">
+    <value>并行标记计算</value>
+  </data>
+  <data name="IntroSkipOptions_ParallelMarkerComputation_Enables_parallel_computation_of_fingerprint_markers_to_improve_performance__Default_is_OFF_" xml:space="preserve">
+    <value>启用并行指纹标记计算以提高性能。默认关闭</value>
+  </data>
+  <data name="IntroSkipOptions_FingerprintExcludeKeywords_Optional_Exclude_Keywords" xml:space="preserve">
+    <value>排除关键词（可选）</value>
+  </data>
+  <data name="IntroSkipOptions_FingerprintExcludeKeywords_Keywords_to_exclude_from_fingerprint_detection_separated_by_comma_or_semicolon__Default_is_EMPTY" xml:space="preserve">
+    <value>从指纹检测中排除的关键词，以逗号或分号分隔。默认为空</value>
+  </data>
+  <data name="IntroSkipOptions_UnifiedIntroDbProviders_Unified_IntroDb_Providers" xml:space="preserve">
+    <value>统一IntroDb提供商</value>
+  </data>
+  <data name="IntroSkipOptions_UnifiedIntroDbProviders_Tried_in_order_until_one_succeeds__Default_is_IntroDb_Tidb" xml:space="preserve">
+    <value>按顺序尝试直到成功。默认为IntroDb,Tidb</value>
+  </data>
+  <data name="IntroSkipOptions_IntroDbApiKey_IntroDb_API_Key" xml:space="preserve">
+    <value>IntroDb API 密钥</value>
+  </data>
+  <data name="IntroSkipOptions_IntroDbApiKey_Optional_API_key_for_higher_daily_usage_limits" xml:space="preserve">
+    <value>可选API密钥，提高每日使用限额</value>
+  </data>
+  <data name="IntroSkipOptions_TidbApiKey_TIDB_API_Key" xml:space="preserve">
+    <value>TIDB API 密钥</value>
+  </data>
+  <data name="IntroSkipOptions_TidbApiKey_API_key_increases_daily_usage_limits" xml:space="preserve">
+    <value>API密钥可提高每日使用限额</value>
+  </data>
+  <data name="MemoryOptions_MemoryUsageLimitMb_Memory_Usage_Limit__MB_" xml:space="preserve">
+    <value>内存使用限制（MB）</value>
+  </data>
+  <data name="MemoryOptions_MemoryUsageLimitMB_Restart_server_if_memory_exceeds_limit_for_15_minutes_during_idle__Leave_blank_to_disable_" xml:space="preserve">
+    <value>空闲时内存超限15分钟则重启服务器。留空禁用</value>
+  </data>
+
 </root>

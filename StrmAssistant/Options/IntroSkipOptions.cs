@@ -23,18 +23,26 @@ namespace StrmAssistant.Options
     {
         [DisplayNameL("PluginOptions_IntroSkipOptions_Intro_Credits_Detection", typeof(Resources))]
         public override string EditorTitle => Resources.PluginOptions_IntroSkipOptions_Intro_Credits_Detection;
-        
+
+        [DisplayNameL("IntroSkipOptions_IntroSkipFingerprintOptions_Fingerprint", typeof(Resources))]
+        public IntroSkipFingerprintOptions IntroSkipFingerprintOptions { get; set; } = new IntroSkipFingerprintOptions();
+
         [DisplayNameL("IntroSkipOptions_UnlockIntroSkip_Built_in_Intro_Skip_Enhanced", typeof(Resources))]
         [DescriptionL("IntroSkipOptions_UnlockIntroSkip_Unlock_Strm_support_for_built_in_intro_skip_detection", typeof(Resources))]
         [Required]
         public bool UnlockIntroSkip { get; set; } = false;
 
-        [DisplayNameL("IntroSkipOptions_IntroDetectionFingerprintMinutes_Intro_Detection_Fingerprint_Minutes", typeof(Resources))]
-        [DescriptionL("IntroSkipOptions_IntroDetectionFingerprintMinutes_It_must_be_between_2_and_20__Default_is_10_", typeof(Resources))]
+        [DisplayNameL("IntroSkipDetectionFingerprintMinutes_Intro_Detection_Fingerprint_Minutes", typeof(Resources))]
+        [DescriptionL("IntroSkipDetectionFingerprintMinutes_It_must_be_between_2_and_20__Default_is_10_", typeof(Resources))]
         [MinValue(2), MaxValue(20)]
         [Required]
         [VisibleCondition(nameof(UnlockIntroSkip), SimpleCondition.IsTrue)]
         public int IntroDetectionFingerprintMinutes { get; set; } = 10;
+
+        [DisplayNameL("IntroSkipOptions_ParallelMarkerComputation_Parallel_Marker_Computation", typeof(Resources))]
+        [DescriptionL("IntroSkipOptions_ParallelMarkerComputation_Enables_parallel_computation_of_fingerprint_markers_to_improve_performance__Default_is_OFF_", typeof(Resources))]
+        [VisibleCondition(nameof(UnlockIntroSkip), SimpleCondition.IsTrue)]
+        public bool ParallelMarkerComputation { get; set; } = false;
 
         [Browsable(false)]
         public List<EditorSelectOption> MarkerEnabledLibraryList { get; set; } = new List<EditorSelectOption>();
@@ -58,6 +66,15 @@ namespace StrmAssistant.Options
 
         [VisibleCondition(nameof(UnlockIntroSkip), SimpleCondition.IsTrue)]
         public SpacerItem FingerprintBlacklistShowsResultSeparator { get; set; } = new SpacerItem(SpacerSize.Medium);
+
+        [DisplayNameL("IntroSkipOptions_FingerprintExcludeKeywords_Optional_Exclude_Keywords", typeof(Resources))]
+        [DescriptionL("IntroSkipOptions_FingerprintExcludeKeywords_Keywords_to_exclude_from_fingerprint_detection_separated_by_comma_or_semicolon__Default_is_EMPTY", typeof(Resources))]
+        [VisibleCondition(nameof(UnlockIntroSkip), SimpleCondition.IsTrue)]
+        [EnabledCondition(nameof(IsModSupported),SimpleCondition.IsTrue)]
+        public string FingerprintExcludeKeywords { get; set; } = string.Empty;
+
+        [DisplayNameL("IntroSkipOptions_IntroSkipScrapeOptions_Scrape", typeof(Resources))]
+        public IntroSkipScrapeOptions IntroSkipScrapeOptions { get; set; } = new IntroSkipScrapeOptions();
 
         [DisplayNameL("PluginOptions_EnableIntroSkip_Enable_Intro_Skip__Experimental_", typeof(Resources))]
         [DescriptionL("PluginOptions_EnableIntroSkip_Enable_intro_skip_and_credits_skip_for_episodes__Default_is_False_", typeof(Resources))]
@@ -248,6 +265,8 @@ namespace StrmAssistant.Options
 
                 IntroSkipPreferenceList.Add(selectPreference);
             }
+
+            IntroSkipScrapeOptions.Initialize();
         }
     }
 }
