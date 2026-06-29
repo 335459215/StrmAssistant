@@ -162,8 +162,6 @@ namespace StrmAssistant
             if (MainOptionsStore.GetOptions().AboutOptions.DebugMode)
             {
                 DebugMode = true;
-                MainOptionsStore.GetOptions().AboutOptions.DebugMode = false;
-                MainOptionsStore.SavePluginOptionsSuppress();
             }
             else if (Debugger.IsAttached)
             {
@@ -206,7 +204,9 @@ namespace StrmAssistant
                 
                 if (healthResult.OverallStatus != HealthStatus.Healthy)
                 {
-                    if (DebugMode)
+                    // 优先使用持久化配置中的 DebugMode 状态，避免 Emby 双实例初始化时序问题
+                    var effectiveDebugMode = DebugMode || MainOptionsStore.GetOptions().AboutOptions.DebugMode;
+                    if (effectiveDebugMode)
                     {
                         Logger.Debug(healthResult.ToString());
                     }
@@ -252,6 +252,23 @@ namespace StrmAssistant
             catch (Exception ex)
             {
                 Logger.Warn($"MemoryCleaner initialization failed: {ex.Message}");
+            }
+
+            // 启动日志轮循管理器（防止单个日志文件无限增长）
+            try
+            {
+                // 日志目录：直接使用 Emby 已知的日志路径
+                var logDir = System.IO.Path.Combine(applicationPaths.DataPath, "logs");
+                if (!System.IO.Directory.Exists(logDir))
+                {
+                    // fallback: 通过 serverApplicationPaths 获取
+                    logDir = serverApplicationPaths.LogDirectoryPath;
+                }
+                LogRotationManager.Initialize(Logger, logDir);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"LogRotationManager initialization failed: {ex.Message}");
             }
 
             // 启动定期性能报告（仅在DebugMode下，每60分钟一次）
@@ -597,6 +614,7 @@ namespace StrmAssistant
 
                 QueueManager.Dispose();
                 MemoryCleaner.DisposeInstance();
+                LogRotationManager.DisposeInstance();
                 PerformanceReporter.DisposeInstance();
                 PlaySessionMonitor?.Dispose();
                 PatchManager.CleanupPatches();
@@ -631,6 +649,29 @@ namespace StrmAssistant
         public CultureInfo DefaultUICulture => new CultureInfo("zh-CN");
 
         public bool DebugMode;
+
+        /// <summary>
+        /// 当日志文件超过大小限制时，由 LogRotationManager 调用此方法关闭调试日志
+        /// 同时关闭插件级 DebugMode 和 Emby 服务器级 EnableDebugLevelLogging
+        /// </summary>
+        public void DisableDebugLogging()
+        {
+            DebugMode = false;
+
+            try
+            {
+                if (_configurationManager?.Configuration != null)
+                {
+                    _configurationManager.Configuration.EnableDebugLevelLogging = false;
+                    _configurationManager.SaveConfiguration();
+                    Logger.Info("Emby server EnableDebugLevelLogging disabled due to log size limit.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug($"Could not disable server debug logging: {ex.Message}");
+            }
+        }
 
         public bool IsModSupported => true;
 
