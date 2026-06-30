@@ -9,7 +9,8 @@ x64/
 build/
 [Bb]in/
 [Oo]bj/
-publish_review/
+publish/
+publish_sa/
 AUDIT_REPORT.md
 *.dll
 *.pdb
