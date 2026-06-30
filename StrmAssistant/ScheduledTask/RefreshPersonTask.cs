@@ -36,7 +36,7 @@ namespace StrmAssistant.ScheduledTask
         public async Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
         {
             _logger.Info("RefreshPerson - Scheduled Task Execute");
-            await Task.Yield();
+            await Task.Delay(0).ConfigureAwait(false);
             progress.Report(0);
 
             var serverPreferredMetadataLanguage = Plugin.MetadataApi.GetServerPreferredMetadataLanguage();
@@ -117,7 +117,7 @@ namespace StrmAssistant.ScheduledTask
 
             personQuery.HasAnyProviderId = new[] { MetadataProviders.Tmdb.ToString() };
 
-            double total = remainingCount;
+            double total = remainingCount > 0 ? remainingCount : 1;
             var current = 0;
             const int batchSize = 100;
             var tasks = new List<Task>();
@@ -192,8 +192,7 @@ namespace StrmAssistant.ScheduledTask
                                         Random.Shared.Next(0,
                                             Math.Max(0,
                                                 tier2MaxConcurrentCount - QueueManager.Tier2Semaphore.CurrentCount) *
-                                            MetadataApi.RequestIntervalMs), cancellationToken)
-                                    .ConfigureAwait(false);
+                                            MetadataApi.RequestIntervalMs), cancellationToken).ConfigureAwait(false);
 
                                 if (cancellationToken.IsCancellationRequested)
                                 {
@@ -250,7 +249,7 @@ namespace StrmAssistant.ScheduledTask
                                 progress.Report(currentCount / total * 100);
                                 _logger.Info("RefreshPerson - Task " + currentCount + "/" + total + " - " + taskItem.Name);
                             }
-                        }, cancellationToken);
+                        });
 
                         tasks.Add(task);
 
@@ -326,7 +325,8 @@ namespace StrmAssistant.ScheduledTask
         public bool IsEnabled => true;
         public bool IsLogged => true;
 
-        public static bool IsRunning { get; private set; }
+        private static volatile bool _isRunning;
+        public static bool IsRunning { get => _isRunning; private set => _isRunning = value; }
 
         public static bool NoAdult { get; private set; }
     }

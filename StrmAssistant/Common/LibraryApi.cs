@@ -121,8 +121,8 @@ namespace StrmAssistant.Common
             CollectionType.BoxSets.ToString()
         };
 
-        public static volatile List<string> LibraryPathsInScope = new List<string>();
-        public static volatile Dictionary<User, bool> AllUsers = new Dictionary<User, bool>();
+        public static volatile IReadOnlyList<string> LibraryPathsInScope = Array.Empty<string>();
+        public static volatile IReadOnlyDictionary<User, bool> AllUsers = new Dictionary<User, bool>();
         public static volatile string[] AdminOrderedViews = Array.Empty<string>();
 
         public LibraryApi(ILibraryManager libraryManager, IProviderManager providerManager, IFileSystem fileSystem,
@@ -152,7 +152,7 @@ namespace StrmAssistant.Common
                 .Select(ls => ls.EndsWith(Path.DirectorySeparatorChar.ToString())
                     ? ls
                     : ls + Path.DirectorySeparatorChar)
-                .ToList();
+                .ToList().AsReadOnly(); // 返回 IReadOnlyList，原子引用替换
         }
 
         public void UpdateLibraryPathsInScope()
@@ -162,6 +162,7 @@ namespace StrmAssistant.Common
 
         public bool IsLibraryInScope(BaseItem item)
         {
+            if (item == null) return false;
             var paths = LibraryPathsInScope; // 捕获 volatile 引用，防止原子替换期间枚举异常
             return !string.IsNullOrEmpty(item.Path) && paths.Any(l => item.Path.StartsWith(l));
         }
@@ -179,7 +180,7 @@ namespace StrmAssistant.Common
             {
                 newUsers[user] = _userManager.GetUserById(user.InternalId).Policy.IsAdministrator;
             }
-            AllUsers = newUsers; // 原子替换，避免并发读写异常
+            AllUsers = newUsers; // Dictionary<User,bool> 实现了 IReadOnlyDictionary，原子引用替换
 
             FetchAdminOrderedViews();
         }
@@ -193,6 +194,7 @@ namespace StrmAssistant.Common
 
         public bool HasMediaInfo(BaseItem item)
         {
+            if (item == null) return false;
             if (!item.RunTimeTicks.HasValue) return false;
 
             var hasStreams = item.GetMediaStreams().Any(i => i.Type == MediaStreamType.Video || i.Type == MediaStreamType.Audio);
@@ -772,8 +774,7 @@ namespace StrmAssistant.Common
 
             if (persistMediaInfo)
             {
-                await Plugin.MediaInfoApi.SerializeMediaInfo(taskItem.InternalId, directoryService, true, source)
-                    .ConfigureAwait(false);
+                await Plugin.MediaInfoApi.SerializeMediaInfo(taskItem.InternalId, directoryService, true, source).ConfigureAwait(false);
             }
 
             return true;
@@ -879,7 +880,7 @@ namespace StrmAssistant.Common
         }
 
         private static MethodInfo _mountMethod;
-        private static bool _mountUsesReadOnlyMemory;
+        private static volatile bool _mountUsesReadOnlyMemory;
 
         private Task<IMediaMount> InvokeMountAsync(string strmPath, CancellationToken cancellationToken)
         {
@@ -1002,7 +1003,7 @@ namespace StrmAssistant.Common
                         }
                     }
                 }
-                catch
+                catch (Exception)
                 {
                     // 继续尝试下一个属性
                 }
@@ -1024,7 +1025,7 @@ namespace StrmAssistant.Common
                         }
                     }
                 }
-                catch
+                catch (Exception)
                 {
                     // 继续尝试下一个字段
                 }

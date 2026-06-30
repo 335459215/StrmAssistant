@@ -11,7 +11,7 @@ namespace StrmAssistant.Core
     /// </summary>
     public class PerformanceReporter : IDisposable
     {
-        private static PerformanceReporter _instance;
+        private static volatile PerformanceReporter _instance;
         private static readonly object _lock = new object();
         
         private readonly ILogger _logger;

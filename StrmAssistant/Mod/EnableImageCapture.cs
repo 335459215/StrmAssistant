@@ -10,6 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading;
+using System.Threading.Tasks;
 using static StrmAssistant.Mod.PatchManager;
 
 namespace StrmAssistant.Mod
@@ -75,28 +76,25 @@ namespace StrmAssistant.Mod
             var embyProviders = Assembly.Load("Emby.Providers");
             var videoImageProvider = embyProviders?.GetType("Emby.Providers.MediaInfo.VideoImageProvider");
             _supportsVideoImageCapture =
-                videoImageProvider?.GetMethod("Supports", BindingFlags.Instance | BindingFlags.Public);
-            _getImage = videoImageProvider?.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.Name == "GetImage")
-                .OrderByDescending(m => m.GetParameters().Length)
-                .FirstOrDefault();
+                SafeGetMethod(videoImageProvider, "Supports", BindingFlags.Instance | BindingFlags.Public);
+            _getImage = SafeGetMethod(videoImageProvider, "GetImage", BindingFlags.Public | BindingFlags.Instance);
             var audioImageProvider = embyProviders?.GetType("Emby.Providers.MediaInfo.AudioImageProvider");
             _supportsAudioEmbeddedImages =
-                audioImageProvider?.GetMethod("Supports", BindingFlags.Instance | BindingFlags.Public);
+                SafeGetMethod(audioImageProvider, "Supports", BindingFlags.Instance | BindingFlags.Public);
 
             var supportsThumbnailsProperty =
                 typeof(Video).GetProperty("SupportsThumbnails", BindingFlags.Public | BindingFlags.Instance);
             _supportsThumbnailsGetter = supportsThumbnailsProperty?.GetGetMethod();
             _runExtraction =
-                imageExtractorBaseType?.GetMethod("RunExtraction", BindingFlags.Instance | BindingFlags.Public);
+                SafeGetMethod(imageExtractorBaseType, "RunExtraction", BindingFlags.Instance | BindingFlags.Public);
             _quickSingleImageExtractor =
                 mediaEncodingAssembly?.GetType("Emby.Server.MediaEncoding.ImageExtraction.QuickSingleImageExtractor");
 
             var embyServerImplementationsAssembly = Assembly.Load("Emby.Server.Implementations");
             var sqliteItemRepository =
                 embyServerImplementationsAssembly?.GetType("Emby.Server.Implementations.Data.SqliteItemRepository");
-            _logThumbnailImageExtractionFailure = sqliteItemRepository?.GetMethod("LogThumbnailImageExtractionFailure",
-                BindingFlags.Public | BindingFlags.Instance);
+            _logThumbnailImageExtractionFailure = SafeGetMethod(sqliteItemRepository,
+                "LogThumbnailImageExtractionFailure", BindingFlags.Public | BindingFlags.Instance);
 
             var optionDefCollection = AccessTools.TypeByName("Emby.Ffmpeg.Model.Options.Collections.OptionDefCollection");
             var optionOwner = AccessTools.TypeByName("Emby.Ffmpeg.Model.Options.Interfaces.IOptionOwner");
@@ -200,7 +198,7 @@ namespace StrmAssistant.Mod
             //PatchUnpatch(PatchTracker, false, _staticConstructor, transpiler: nameof(ResourcePoolTranspiler));
 
             var resourcePool = (SemaphoreSlim)_resourcePoolField.GetValue(null);
-            Plugin.Instance.Logger.Info("Current FFmpeg Resource Pool: " + resourcePool?.CurrentCount ?? string.Empty);
+            Plugin.Instance.Logger.Info("Current FFmpeg Resource Pool: " + (resourcePool?.CurrentCount.ToString() ?? "N/A"));
         }
 
         public static void UpdateResourcePool(int maxConcurrentCount)
@@ -214,38 +212,42 @@ namespace StrmAssistant.Mod
                 switch (Instance.PatchTracker.FallbackPatchApproach)
                 {
                     case PatchApproach.Harmony:
+                        // Harmony 下也支持热更新：原子替换信号量引用
+                        newSemaphoreFFmpeg = new SemaphoreSlim(maxConcurrentCount);
+                        oldSemaphoreFFmpeg = Interlocked.Exchange(ref SemaphoreFFmpeg, newSemaphoreFFmpeg);
                         Plugin.Instance.ApplicationHost.NotifyPendingRestart();
 
-                        /* un-patch and re-patch don't work for readonly static field
-                        UnpatchResourcePool();
-
-                        _currentMaxConcurrentCount = maxConcurrentCount;
-                        newSemaphoreFFmpeg = new SemaphoreSlim(maxConcurrentCount);
-                        oldSemaphoreFFmpeg = SemaphoreFFmpeg;
-                        SemaphoreFFmpeg = newSemaphoreFFmpeg;
-
-                        PatchResourcePool();
-
-                        oldSemaphoreFFmpeg.Dispose();
-                        */
+                        // Delayed dispose: give in-flight holders of the old semaphore time to release.
+                        Task.Delay(TimeSpan.FromSeconds(30)).ContinueWith(_ =>
+                        {
+                            try { oldSemaphoreFFmpeg?.Dispose(); }
+                            catch (ObjectDisposedException) { /* already disposed — safe */ }
+                        }, TaskScheduler.Default);
                         break;
 
                     case PatchApproach.Reflection:
 
                         newSemaphoreFFmpeg = new SemaphoreSlim(maxConcurrentCount);
-                        oldSemaphoreFFmpeg = SemaphoreFFmpeg;
-                        SemaphoreFFmpeg = newSemaphoreFFmpeg;
+                        // Interlocked.Exchange ensures atomic swap — threads holding the old semaphore
+                        // will complete on it; new threads will see the updated reference immediately.
+                        oldSemaphoreFFmpeg = Interlocked.Exchange(ref SemaphoreFFmpeg, newSemaphoreFFmpeg);
 
                         PatchResourcePoolByReflection();
 
-                        oldSemaphoreFFmpeg.Dispose();
+                        // Delayed dispose: give in-flight holders of the old semaphore time to release.
+                        // This avoids ObjectDisposedException if a thread is between Wait and Release.
+                        Task.Delay(TimeSpan.FromSeconds(30)).ContinueWith(_ =>
+                        {
+                            try { oldSemaphoreFFmpeg?.Dispose(); }
+                            catch (ObjectDisposedException) { /* already disposed — safe */ }
+                        }, TaskScheduler.Default);
 
                         break;
                 }
             }
 
             var resourcePool = (SemaphoreSlim)_resourcePoolField.GetValue(null);
-            Plugin.Instance.Logger.Info("Current FFmpeg ResourcePool: " + resourcePool?.CurrentCount ?? string.Empty);
+            Plugin.Instance.Logger.Info("Current FFmpeg ResourcePool: " + (resourcePool?.CurrentCount.ToString() ?? string.Empty));
         }
 
         public static void PatchUnpatchIsShortcut(bool apply)
@@ -324,17 +326,17 @@ namespace StrmAssistant.Mod
         private static IEnumerable<CodeInstruction> ResourcePoolTranspiler(IEnumerable<CodeInstruction> instructions)
         {
             var codes = new List<CodeInstruction>(instructions);
+            // Transpiler 只在补丁时执行一次，但使用局部变量使意图更清晰
+            var maxConcurrent = (sbyte)Plugin.Instance.MainOptionsStore.GetOptions().GeneralOptions.MaxConcurrentCount;
 
             for (int i = 0; i < codes.Count; i++)
             {
                 if (codes[i].opcode == OpCodes.Ldc_I4_1)
                 {
-                    codes[i] = new CodeInstruction(OpCodes.Ldc_I4_S,
-                        (sbyte)Plugin.Instance.MainOptionsStore.GetOptions().GeneralOptions.MaxConcurrentCount);
+                    codes[i] = new CodeInstruction(OpCodes.Ldc_I4_S, maxConcurrent);
                     if (i + 1 < codes.Count && codes[i + 1].opcode == OpCodes.Ldc_I4_1)
                     {
-                        codes[i + 1] = new CodeInstruction(OpCodes.Ldc_I4_S,
-                            (sbyte)Plugin.Instance.MainOptionsStore.GetOptions().GeneralOptions.MaxConcurrentCount);
+                        codes[i + 1] = new CodeInstruction(OpCodes.Ldc_I4_S, maxConcurrent);
                     }
                     break;
                 }
@@ -496,6 +498,33 @@ namespace StrmAssistant.Mod
                     commonOptions.RemoveAt(i);
                 }
             }
+        }
+
+        /// <summary>
+        /// 清理所有静态状态，供插件热重载时调用
+        /// </summary>
+        public static void Cleanup()
+        {
+            // 释放旧信号量
+            var oldSemaphore = Interlocked.Exchange(ref SemaphoreFFmpeg, null);
+            oldSemaphore?.Dispose();
+
+            _isShortcutPatchUsageCount = 0;
+            SemaphoreFFmpegMaxCount = 0;
+
+            // 清空缓存的反射信息
+            _staticConstructor = null;
+            _resourcePoolField = null;
+            _isShortcutGetter = null;
+            _isShortcutProperty = null;
+            _supportsVideoImageCapture = null;
+            _supportsAudioEmbeddedImages = null;
+            _getImage = null;
+            _runExtraction = null;
+            _quickSingleImageExtractor = null;
+            _supportsThumbnailsGetter = null;
+            _logThumbnailImageExtractionFailure = null;
+            _baseOptionsConstructor = null;
         }
     }
 }

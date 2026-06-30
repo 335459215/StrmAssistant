@@ -45,7 +45,9 @@ namespace StrmAssistant.Options
             if (informationalVersion != null)
             {
                 var parts = informationalVersion.Split('+');
-                var shortCommitHash = parts.Length > 1 ? parts[1].Substring(0, 7) : "n/a";
+                var shortCommitHash = parts.Length > 1
+                    ? (parts[1].Length >= 7 ? parts[1].Substring(0, 7) : parts[1])
+                    : "n/a";
                 return $"{fullVersion}+{shortCommitHash}";
             }
 

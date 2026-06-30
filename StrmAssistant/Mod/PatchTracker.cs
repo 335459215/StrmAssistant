@@ -100,7 +100,7 @@ namespace StrmAssistant.Mod
         {
             if (!string.IsNullOrEmpty(message))
             {
-                ErrorMessages.Add($"[{DateTime.Now:HH:mm:ss}] {message}");
+                ErrorMessages.Add($"[{DateTime.UtcNow:HH:mm:ss}] {message}");
             }
         }
         

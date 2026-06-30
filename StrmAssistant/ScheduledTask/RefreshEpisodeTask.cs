@@ -25,7 +25,7 @@ namespace StrmAssistant.ScheduledTask
                 .Tier2MaxConcurrentCount;
             _logger.Info("Tier2 Max Concurrent Count: " + tier2MaxConcurrentCount);
 
-            await Task.Yield();
+            await Task.Delay(0).ConfigureAwait(false);
             progress.Report(0);
 
             var itemsToRefresh = Plugin.LibraryApi.FetchEpisodeRefreshTaskItems();
@@ -35,7 +35,7 @@ namespace StrmAssistant.ScheduledTask
 
             try
             {
-                double total = itemsToRefresh.Count;
+                double total = itemsToRefresh.Count > 0 ? itemsToRefresh.Count : 1;
                 var index = 0;
                 var current = 0;
 
@@ -67,8 +67,7 @@ namespace StrmAssistant.ScheduledTask
                             await Task.Delay(
                                     Random.Shared.Next(0,
                                         Math.Max(0, tier2MaxConcurrentCount - QueueManager.Tier2Semaphore.CurrentCount) *
-                                        MetadataApi.RequestIntervalMs), cancellationToken)
-                                .ConfigureAwait(false);
+                                        MetadataApi.RequestIntervalMs), cancellationToken).ConfigureAwait(false);
 
                             if (cancellationToken.IsCancellationRequested)
                             {
@@ -78,8 +77,7 @@ namespace StrmAssistant.ScheduledTask
                             EnableItemExclusiveFeatures(taskItem.InternalId, ExclusiveControl.CatchAllBlock,
                                 ExclusiveControl.IgnoreExtSubChange);
 
-                            await Plugin.LibraryApi.RefreshEpisodeMetadata(taskItem, cancellationToken)
-                                .ConfigureAwait(false);
+                            await Plugin.LibraryApi.RefreshEpisodeMetadata(taskItem, cancellationToken).ConfigureAwait(false);
                         }
                         catch (OperationCanceledException)
                         {
@@ -102,7 +100,7 @@ namespace StrmAssistant.ScheduledTask
                             _logger.Info("EpisodeRefresh - Progress " + currentCount + "/" + total + " - " +
                                          "Task " + taskIndex + ": " + taskItem.Path);
                         }
-                    }, cancellationToken);
+                    });
                     tasks.Add(task);
 
                     // 周期性剔除已完成 task，释放它们捕获的 Episode 闭包，缩减常驻内存峰值
@@ -180,6 +178,7 @@ namespace StrmAssistant.ScheduledTask
 
         public bool IsLogged => true;
 
-        public static bool IsRunning { get; private set; }
+        private static volatile bool _isRunning;
+        public static bool IsRunning { get => _isRunning; private set => _isRunning = value; }
     }
 }

@@ -5,6 +5,7 @@ using MediaBrowser.Model.Entities;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using static StrmAssistant.Mod.PatchManager;
 using static StrmAssistant.Options.MediaInfoExtractOptions;
 
@@ -34,15 +35,14 @@ namespace StrmAssistant.Mod
             var embyServerImplementationsAssembly = Assembly.Load("Emby.Server.Implementations");
             var sqliteItemRepository =
                 embyServerImplementationsAssembly.GetType("Emby.Server.Implementations.Data.SqliteItemRepository");
-            _saveChapters = sqliteItemRepository.GetMethod("SaveChapters",
-                BindingFlags.Instance | BindingFlags.Public, null,
-                new[] { typeof(long), typeof(bool), typeof(List<ChapterInfo>) }, null);
+            _saveChapters = SafeGetMethod(sqliteItemRepository, "SaveChapters",
+                BindingFlags.Instance | BindingFlags.Public, 3);
             _deleteChapters =
-                sqliteItemRepository.GetMethod("DeleteChapters", BindingFlags.Instance | BindingFlags.Public);
+                SafeGetMethod(sqliteItemRepository, "DeleteChapters", BindingFlags.Instance | BindingFlags.Public);
 
             var embyProviders = Assembly.Load("Emby.Providers");
             var audioFingerprintManager = embyProviders.GetType("Emby.Providers.Markers.AudioFingerprintManager");
-            _onFailedToFindIntro = audioFingerprintManager.GetMethod("OnFailedToFindIntro",
+            _onFailedToFindIntro = SafeGetMethod(audioFingerprintManager, "OnFailedToFindIntro",
                 BindingFlags.NonPublic | BindingFlags.Static);
         }
 
@@ -69,7 +69,8 @@ namespace StrmAssistant.Mod
 
             if (BypassItem.Value != 0 && BypassItem.Value == itemId) return;
 
-            _ = Plugin.MediaInfoApi.SerializeMediaInfo(itemId, null, true, "Save Chapters").ConfigureAwait(false);
+            Plugin.MediaInfoApi.SerializeMediaInfo(itemId, null, true, "Save Chapters")
+                .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"ChapterChangeTracker SaveChapters failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
         }
 
         [HarmonyPostfix]
@@ -77,7 +78,8 @@ namespace StrmAssistant.Mod
         {
             if (BypassItem.Value != 0 && BypassItem.Value == itemId) return;
 
-            _ = Plugin.MediaInfoApi.SerializeMediaInfo(itemId, null, true, "Delete Chapters").ConfigureAwait(false);
+            Plugin.MediaInfoApi.SerializeMediaInfo(itemId, null, true, "Delete Chapters")
+                .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"ChapterChangeTracker DeleteChapters failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
         }
 
         [HarmonyPostfix]
@@ -85,8 +87,9 @@ namespace StrmAssistant.Mod
         {
             if (__runOriginal)
             {
-                _ = Plugin.MediaInfoApi.SerializeMediaInfo(episode.InternalId, null, true,
-                    "Zero Fingerprint Confidence").ConfigureAwait(false);
+                Plugin.MediaInfoApi.SerializeMediaInfo(episode.InternalId, null, true,
+                    "Zero Fingerprint Confidence")
+                    .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"ChapterChangeTracker OnFailedToFindIntro failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
             }
         }
     }

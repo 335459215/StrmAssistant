@@ -70,51 +70,51 @@ namespace StrmAssistant.Mod
             {
                 var genericMovieDbInfo = _movieDbAssembly.GetType("MovieDb.GenericMovieDbInfo`1");
                 var genericMovieDbInfoMovie = genericMovieDbInfo.MakeGenericType(typeof(Movie));
-                _genericIsCompleteMovie = genericMovieDbInfoMovie.GetMethod("IsComplete",
+                _genericIsCompleteMovie = SafeGetMethod(genericMovieDbInfoMovie, "IsComplete",
                     BindingFlags.NonPublic | BindingFlags.Instance);
-                _genericProcessMainInfoMovie = genericMovieDbInfoMovie.GetMethod("ProcessMainInfo",
+                _genericProcessMainInfoMovie = SafeGetMethod(genericMovieDbInfoMovie, "ProcessMainInfo",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 var movieDbProvider = _movieDbAssembly.GetType("MovieDb.MovieDbProvider");
-                _movieGetMetadata = movieDbProvider.GetMethod("GetMetadata");
+                _movieGetMetadata = SafeGetMethod(movieDbProvider, "GetMetadata", BindingFlags.Public | BindingFlags.Instance);
                 var completeMovieData = movieDbProvider.GetNestedType("CompleteMovieData", BindingFlags.NonPublic);
 
-                _getTitleMovieData = completeMovieData.GetMethod("GetTitle");
+                _getTitleMovieData = SafeGetMethod(completeMovieData, "GetTitle");
                 ReversePatch(PatchTracker, _getTitleMovieData, nameof(MovieGetTitleStub));
                 var movieDbProviderBase = _movieDbAssembly.GetType("MovieDb.MovieDbProviderBase");
-                _getMovieDbMetadataLanguages = movieDbProviderBase.GetMethod("GetMovieDbMetadataLanguages",
+                _getMovieDbMetadataLanguages = SafeGetMethod(movieDbProviderBase, "GetMovieDbMetadataLanguages",
                     BindingFlags.Public | BindingFlags.Instance);
-                _mapLanguageToProviderLanguage = movieDbProviderBase.GetMethod("MapLanguageToProviderLanguage",
+                _mapLanguageToProviderLanguage = SafeGetMethod(movieDbProviderBase, "MapLanguageToProviderLanguage",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 ReversePatch(PatchTracker, _mapLanguageToProviderLanguage, nameof(MapLanguageToProviderLanguageStub));
-                _getImageLanguagesParam = movieDbProviderBase.GetMethod("GetImageLanguagesParam",
-                    BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { typeof(string[]) }, null);
+                _getImageLanguagesParam = SafeGetMethod(movieDbProviderBase, "GetImageLanguagesParam",
+                    BindingFlags.NonPublic | BindingFlags.Instance, 1);
                 _cacheTime = movieDbProviderBase.GetField("CacheTime", BindingFlags.Public | BindingFlags.Static);
 
                 var movieDbSeriesProvider = _movieDbAssembly.GetType("MovieDb.MovieDbSeriesProvider");
                 _movieDbSeriesProviderIsComplete =
-                    movieDbSeriesProvider.GetMethod("IsComplete", BindingFlags.NonPublic | BindingFlags.Instance);
-                _movieDbSeriesProviderImportData =
-                    movieDbSeriesProvider.GetMethod("ImportData", BindingFlags.NonPublic | BindingFlags.Instance);
-                _ensureSeriesInfo = movieDbSeriesProvider.GetMethod("EnsureSeriesInfo",
-                    BindingFlags.Instance | BindingFlags.NonPublic);
+                    SafeGetMethod(movieDbSeriesProvider, "IsComplete", BindingFlags.NonPublic | BindingFlags.Instance);
                 var seriesRootObject = movieDbSeriesProvider.GetNestedType("SeriesRootObject", BindingFlags.Public);
-                _getTitleSeriesInfo = seriesRootObject.GetMethod("GetTitle");
+                _movieDbSeriesProviderImportData =
+                    SafeGetMethod(movieDbSeriesProvider, "ImportData", BindingFlags.NonPublic | BindingFlags.Instance, 5);
+                _ensureSeriesInfo = SafeGetMethod(movieDbSeriesProvider, "EnsureSeriesInfo",
+                    BindingFlags.Instance | BindingFlags.NonPublic);
+                _getTitleSeriesInfo = SafeGetMethod(seriesRootObject, "GetTitle");
                 ReversePatch(PatchTracker, _getTitleSeriesInfo, nameof(SeriesGetTitleStub));
 
                 var movieDbSeasonProvider = _movieDbAssembly.GetType("MovieDb.MovieDbSeasonProvider");
                 _movieDbSeasonProviderIsComplete =
-                    movieDbSeasonProvider.GetMethod("IsComplete", BindingFlags.NonPublic | BindingFlags.Instance);
+                    SafeGetMethod(movieDbSeasonProvider, "IsComplete", BindingFlags.NonPublic | BindingFlags.Instance);
                 _movieDbSeasonProviderImportData =
-                    movieDbSeasonProvider.GetMethod("ImportData", BindingFlags.NonPublic | BindingFlags.Instance);
+                    SafeGetMethod(movieDbSeasonProvider, "ImportData", BindingFlags.NonPublic | BindingFlags.Instance, 5);
 
                 var movieDbEpisodeProvider = _movieDbAssembly.GetType("MovieDb.MovieDbEpisodeProvider");
                 _movieDbEpisodeProviderIsComplete =
-                    movieDbEpisodeProvider.GetMethod("IsComplete", BindingFlags.NonPublic | BindingFlags.Instance);
+                    SafeGetMethod(movieDbEpisodeProvider, "IsComplete", BindingFlags.NonPublic | BindingFlags.Instance);
                 _movieDbEpisodeProviderImportData =
-                    movieDbEpisodeProvider.GetMethod("ImportData", BindingFlags.NonPublic | BindingFlags.Instance);
+                    SafeGetMethod(movieDbEpisodeProvider, "ImportData", BindingFlags.NonPublic | BindingFlags.Instance, 5);
                 
                 var getEpisodeInfo =
-                    movieDbProviderBase.GetMethod("GetEpisodeInfo", BindingFlags.NonPublic | BindingFlags.Instance);
+                    SafeGetMethod(movieDbProviderBase, "GetEpisodeInfo", BindingFlags.NonPublic | BindingFlags.Instance);
                 _getEpisodeInfoAsync = AccessTools.AsyncMoveNext(getEpisodeInfo);
             }
             else
@@ -405,7 +405,7 @@ namespace StrmAssistant.Mod
             {
                 seriesInfo = Traverse.Create(__result).Property("Result").GetValue();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }

@@ -150,6 +150,7 @@ namespace StrmAssistant.Common
             }
 
             // 尝试修改LibraryMonitor以忽略.json文件（这个失败不影响MediaInfoApi的核心功能）
+            // 使用带去重检查的修改方式，避免覆盖其他插件已添加的扩展名
             try
             {
                 var embyServerImplementationsAssembly = Assembly.Load("Emby.Server.Implementations");
@@ -158,14 +159,26 @@ namespace StrmAssistant.Common
                 var alwaysIgnoreExtensions = libraryMonitorImpl.GetField("_alwaysIgnoreExtensions",
                     BindingFlags.Instance | BindingFlags.NonPublic);
                 var currentArray = (string[])alwaysIgnoreExtensions.GetValue(libraryMonitor);
-                var newArray = new string[currentArray.Length + 1];
-                Array.Copy(currentArray, newArray, currentArray.Length);
-                newArray[newArray.Length - 1] = ".json";
-                alwaysIgnoreExtensions.SetValue(libraryMonitor, newArray);
-                
-                if (Plugin.Instance.DebugMode)
+
+                // 检查 .json 是否已存在，避免重复添加
+                if (!currentArray.Contains(".json", StringComparer.OrdinalIgnoreCase))
                 {
-                    _logger.Debug("LibraryMonitor .json ignore extension added successfully");
+                    var newArray = new string[currentArray.Length + 1];
+                    Array.Copy(currentArray, newArray, currentArray.Length);
+                    newArray[newArray.Length - 1] = ".json";
+                    alwaysIgnoreExtensions.SetValue(libraryMonitor, newArray);
+                    
+                    if (Plugin.Instance.DebugMode)
+                    {
+                        _logger.Debug("LibraryMonitor .json ignore extension added successfully");
+                    }
+                }
+                else
+                {
+                    if (Plugin.Instance.DebugMode)
+                    {
+                        _logger.Debug("LibraryMonitor .json ignore extension already present, skipping");
+                    }
                 }
             }
             catch (Exception e)
@@ -448,7 +461,7 @@ namespace StrmAssistant.Common
         {
             var workItem = _libraryManager.GetItemById(itemId);
 
-            if (!Plugin.LibraryApi.IsLibraryInScope(workItem)) return false;
+            if (workItem == null || !Plugin.LibraryApi.IsLibraryInScope(workItem)) return false;
 
             if (!Plugin.LibraryApi.HasMediaInfo(workItem))
             {
@@ -465,6 +478,8 @@ namespace StrmAssistant.Common
             bool ignoreFileChange)
         {
             var workItem = _libraryManager.GetItemById(item.InternalId);
+
+            if (workItem == null) return true;
 
             if (Plugin.LibraryApi.HasMediaInfo(workItem)) return true;
 
@@ -499,13 +514,11 @@ namespace StrmAssistant.Common
                             var imageBytes = Convert.FromBase64String(mediaSourceWithChapters.EmbeddedImage);
                             var tempPath = Path.Combine(Plugin.Instance.ApplicationPaths.TempDirectory,
                                 Guid.NewGuid() + ".jpg");
-                            await _fileSystem.WriteAllBytesAsync(tempPath, imageBytes, CancellationToken.None)
-                                .ConfigureAwait(false);
+                            await _fileSystem.WriteAllBytesAsync(tempPath, imageBytes, CancellationToken.None).ConfigureAwait(false);
 
                             var libraryOptions = _libraryManager.GetLibraryOptions(workItem);
                             await _providerManager.SaveImage(workItem, libraryOptions, tempPath, ImageType.Primary,
-                                    null, Array.Empty<long>(), directoryService, false, CancellationToken.None)
-                                .ConfigureAwait(false);
+                                    null, Array.Empty<long>(), directoryService, false, CancellationToken.None).ConfigureAwait(false);
                         }
 
                         workItem.Size = mediaSourceWithChapters.MediaSourceInfo.Size.GetValueOrDefault();
@@ -678,7 +691,7 @@ namespace StrmAssistant.Common
 
                     thumbnailResult = await Plugin.VideoThumbnailApi.RefreshThumbnailImages(item,
                         dummyLibraryOptions, directoryService, chapters, false, false,
-                        CancellationToken.None);
+                        CancellationToken.None).ConfigureAwait(false);
 
                     if (thumbnailResult)
                     {

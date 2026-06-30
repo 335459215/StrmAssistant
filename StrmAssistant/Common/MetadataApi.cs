@@ -119,20 +119,24 @@ namespace StrmAssistant.Common
 
             if (GetMovieDbPersonProvider() is IRemoteMetadataProvider<Person, PersonLookupInfo> provider)
             {
-                return await GetMetadataFromProvider(provider, directoryService, lookupInfo, cancellationToken)
-                    .ConfigureAwait(false);
+                return await GetMetadataFromProvider(provider, directoryService, lookupInfo, cancellationToken).ConfigureAwait(false);
             }
 
             return await Task.FromResult(new MetadataResult<Person>()).ConfigureAwait(false);
         }
 
+        private IMetadataProvider _cachedMovieDbPersonProvider;
         private IMetadataProvider GetMovieDbPersonProvider()
         {
+            // 使用缓存的提供者实例，避免每次调用都查询 MEF 导出
+            if (_cachedMovieDbPersonProvider != null)
+                return _cachedMovieDbPersonProvider;
+
             var metadataProviders = Plugin.Instance.ApplicationHost.GetExports<IMetadataProvider>().ToArray();
-            var movieDbPersonProvider = metadataProviders
+            _cachedMovieDbPersonProvider = metadataProviders
                 .FirstOrDefault(provider => provider.GetType().Name == "MovieDbPersonProvider");
 
-            return movieDbPersonProvider;
+            return _cachedMovieDbPersonProvider;
         }
 
         private Task<MetadataResult<TItemType>> GetMetadataFromProvider<TItemType, TIdType>(
@@ -295,7 +299,7 @@ namespace StrmAssistant.Common
 
         public async Task<T> GetMovieDbResponse<T>(string url, CancellationToken cancellationToken) where T : class
         {
-            return await GetMovieDbResponse<T>(url, null, null, cancellationToken);
+            return await GetMovieDbResponse<T>(url, null, null, cancellationToken).ConfigureAwait(false);
         }
 
         public T TryGetFromCache<T>(string cacheKey, string cachePath) where T : class

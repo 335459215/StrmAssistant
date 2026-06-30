@@ -52,22 +52,21 @@ namespace StrmAssistant.Mod
             if (_movieDbAssembly != null)
             {
                 var movieDbPersonProvider = _movieDbAssembly.GetType("MovieDb.MovieDbPersonProvider");
-                _movieDbPersonProviderImportData = movieDbPersonProvider.GetMethod("ImportData",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
+                _movieDbPersonProviderImportData = SafeGetMethod(movieDbPersonProvider, "ImportData",
+                    BindingFlags.NonPublic | BindingFlags.Instance, 3);
                 var ensurePersonInfo =
-                    movieDbPersonProvider.GetMethod("EnsurePersonInfo", BindingFlags.NonPublic | BindingFlags.Instance);
+                    SafeGetMethod(movieDbPersonProvider, "EnsurePersonInfo", BindingFlags.NonPublic | BindingFlags.Instance);
                 _ensurePersonInfoAsync = AccessTools.AsyncMoveNext(ensurePersonInfo);
 
                 var movieDbProviderBase = _movieDbAssembly.GetType("MovieDb.MovieDbProviderBase");
-                _cacheTime = movieDbProviderBase.GetField("CacheTime", BindingFlags.Public | BindingFlags.Static);
+                _cacheTime = movieDbProviderBase?.GetField("CacheTime", BindingFlags.Public | BindingFlags.Static);
 
                 var movieDbSeasonProvider = _movieDbAssembly.GetType("MovieDb.MovieDbSeasonProvider");
                 _movieDbSeasonProviderImportData =
-                    movieDbSeasonProvider.GetMethod("ImportData", BindingFlags.NonPublic | BindingFlags.Instance);
-                _seasonGetMetadata = movieDbSeasonProvider.GetMethod("GetMetadata",
-                    BindingFlags.Public | BindingFlags.Instance, null,
-                    new[] { typeof(RemoteMetadataFetchOptions<SeasonInfo>), typeof(CancellationToken) }, null);
-                _addPerson = typeof(PeopleHelper).GetMethod("AddPerson", BindingFlags.Static | BindingFlags.Public);
+                    SafeGetMethod(movieDbSeasonProvider, "ImportData", BindingFlags.NonPublic | BindingFlags.Instance, 5);
+                _seasonGetMetadata = SafeGetMethod(movieDbSeasonProvider, "GetMetadata",
+                    BindingFlags.Public | BindingFlags.Instance, 2);
+                _addPerson = SafeGetMethod(typeof(PeopleHelper), "AddPerson", BindingFlags.Static | BindingFlags.Public);
             }
             else
             {
@@ -251,9 +250,9 @@ namespace StrmAssistant.Mod
 
             try
             {
-                result = __result?.Result;
+                result = __result?.GetAwaiter().GetResult();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }

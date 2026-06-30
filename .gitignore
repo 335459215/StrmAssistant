@@ -9,3 +9,8 @@ x64/
 build/
 [Bb]in/
 [Oo]bj/
+publish_review/
+AUDIT_REPORT.md
+*.dll
+*.pdb
+*.deps.json

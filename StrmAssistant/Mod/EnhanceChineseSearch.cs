@@ -40,33 +40,34 @@ namespace StrmAssistant.Mod
         private static MethodInfo _getJoinCommandText;
         private static MethodInfo _createSearchTerm;
         private static MethodInfo _cacheIdsFromTextParams;
-        private static bool _getJoinCommandTextReturnsStringBuilder;
+        private static volatile bool _getJoinCommandTextReturnsStringBuilder;
 
         public static string CurrentTokenizerName { get; private set; } = "unknown";
 
         private static string _tokenizerPath;
         private static readonly object _lock = new object();
-        private static bool _patchPhase2Initialized;
-        private static bool _simpleQueryAvailable;
-        private static bool _tokenizerReady;
+        private static volatile bool _patchPhase2Initialized;
+        private static volatile bool _simpleQueryAvailable;
+        private static volatile bool _tokenizerReady;
 
-        private static bool _excludeOriginalTitle;
-        private static bool _traditionalToSimplified;
-        private static bool _suppressSearchSuggestions;
-        private static bool _digitsAsTmdbId;
-        private static bool _extensionNeedsLoading;
+        private static volatile bool _excludeOriginalTitle;
+        private static volatile bool _traditionalToSimplified;
+        private static volatile bool _suppressSearchSuggestions;
+        private static volatile bool _digitsAsTmdbId;
+        private static volatile bool _extensionNeedsLoading;
         private static CancellationTokenSource _catchUpCts;
-        private static bool _useUnicode61Mode;
+        private static volatile bool _useUnicode61Mode;
         private static readonly ConditionalWeakTable<object, object> _loadedConnections =
             new ConditionalWeakTable<object, object>();
 
         // FTS 增量维护：Emby 自身在新增/更新 MediaItems 时会以原始字段写入 fts_searchN，
         // 不经过 NormalizeWithFullPinyin。我们在 ItemAdded/ItemUpdated 时把 itemId 入队，
         // 在 Emby 提供 library.db 活连接时刷新；搜索路径仍会顺带补刷，作为连接不可用或锁竞争时的兜底。
+        // 使用 ConcurrentQueue 保证入队顺序与出队顺序一致，ConcurrentDictionary 仅做去重判断。
         private static readonly ConcurrentDictionary<long, byte> _pendingFtsRefresh =
             new ConcurrentDictionary<long, byte>();
-        private static readonly ConcurrentStack<long> _pendingFtsRefreshOrder =
-            new ConcurrentStack<long>();
+        private static readonly ConcurrentQueue<long> _pendingFtsRefreshOrder =
+            new ConcurrentQueue<long>();
         private static volatile string _ftsTableName;
         private static volatile bool _enrichedIndexActive;
         private static volatile object _libraryRepository;
@@ -78,11 +79,13 @@ namespace StrmAssistant.Mod
 
         private static readonly Regex DigitsOnlyRegex = new Regex(@"^\d+$", RegexOptions.Compiled);
         private static readonly Regex ChineseCharRegex = new Regex(@"[\u4E00-\u9FFF]", RegexOptions.Compiled);
+        private static readonly Regex WhitespaceRegex = new Regex(@"\s+", RegexOptions.Compiled);
+        // ID 匹配正则，搜索热路径使用，Compiled 提升匹配性能
         private static readonly Dictionary<string, Regex> patterns = new Dictionary<string, Regex>
         {
-            { "imdb", new Regex(@"^tt\d{7,8}$", RegexOptions.IgnoreCase | RegexOptions.Compiled) },
-            { "tmdb", new Regex(@"^tmdb(id)?=(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled) },
-            { "tvdb", new Regex(@"^tvdb(id)?=(\d+)$", RegexOptions.IgnoreCase | RegexOptions.Compiled) }
+            { "imdb", new Regex(@"^tt\d{7,8}$", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
+            { "tmdb", new Regex(@"^tmdb(id)?=(\d+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase) },
+            { "tvdb", new Regex(@"^tvdb(id)?=(\d+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase) }
         };
 
         [DllImport("sqlite3", EntryPoint = "sqlite3_load_extension", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
@@ -228,9 +231,9 @@ namespace StrmAssistant.Mod
                             }
                         }
                         
-                        _createSearchTerm = sqliteItemRepository.GetMethod("CreateSearchTerm", 
+                        _createSearchTerm = SafeGetMethod(sqliteItemRepository, "CreateSearchTerm", 
                             BindingFlags.NonPublic | BindingFlags.Static);
-                        _cacheIdsFromTextParams = sqliteItemRepository.GetMethod("CacheIdsFromTextParams",
+                        _cacheIdsFromTextParams = SafeGetMethod(sqliteItemRepository, "CacheIdsFromTextParams",
                             BindingFlags.Instance | BindingFlags.NonPublic);
                     }
                 }
@@ -322,23 +325,125 @@ namespace StrmAssistant.Mod
             }
             else
             {
-                Plugin.Instance.Logger.Warn("EnhanceChineseSearch - Feature enabled but init failed, check compatibility logs");
-                // 保留用户配置，不自动禁用
+                Plugin.Instance.Logger.Info("EnhanceChineseSearch - PatchPhase1 failed, falling back to reflection init (async)");
+                // Harmony patch 失败时使用反射回退：延迟获取数据库连接并执行 PatchPhase2
+                InitFtsViaReflection();
             }
+        }
+
+        /// <summary>
+        /// 动态发现 FTS 表名，优先高版本，兼容未来 Emby 版本
+        /// </summary>
+        private static string DiscoverFtsTableName(IDatabaseConnection connection)
+        {
+            // 按优先级尝试：高版本号优先
+            var candidates = new[] { "fts_search9", "fts_search10", "fts_search8", "fts_search11" };
+
+            foreach (var name in candidates)
+            {
+                try
+                {
+                    var checkSql = $"SELECT name FROM sqlite_master WHERE type='table' AND name='{name}'";
+                    using var stmt = connection.PrepareStatement(checkSql);
+                    if (stmt.MoveNext())
+                    {
+                        Plugin.Instance.Logger.Info($"Discovered FTS table: {name}");
+                        return name;
+                    }
+                }
+                catch (Exception)
+                {
+                    // try next
+                }
+            }
+
+            // 回退：按版本号猜测
+            if (AppVer >= Ver4830)
+            {
+                Plugin.Instance.Logger.Warn("FTS table discovery failed, falling back to fts_search9 by version");
+                return "fts_search9";
+            }
+
+            Plugin.Instance.Logger.Warn("FTS table discovery failed, falling back to fts_search8 by version");
+            return "fts_search8";
+        }
+
+        /// <summary>
+        /// Harmony PatchPhase1 失败时的反射回退：通过 Plugin.ItemRepository 获取 SqliteItemRepository 实例，
+        /// 创建可写连接并执行 PatchPhase2（注册 FTS tokenizer）。
+        /// </summary>
+        private static void InitFtsViaReflection()
+        {
+            if (_createConnection == null)
+            {
+                Plugin.Instance.Logger.Warn("EnhanceChineseSearch - Cannot init FTS via reflection: CreateConnection method not found");
+                return;
+            }
+
+            // 使用独立线程而非 Task.Run 避免异步死锁
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    for (var attempt = 0; attempt < 12; attempt++)
+                    {
+                        Thread.Sleep(TimeSpan.FromSeconds(5));
+
+                        var itemRepo = Plugin.Instance.ItemRepository;
+                        if (itemRepo == null)
+                        {
+                            ThreadLog("Debug", $"EnhanceChineseSearch - FTS init attempt {attempt + 1}: ItemRepository not ready, retrying...");
+                            continue;
+                        }
+
+                        // 保存 repository 引用供后续 FTS catch-up 使用
+                        _libraryRepository = itemRepo;
+
+                        try
+                        {
+                            using (var db = CreateWritableConnection(itemRepo))
+                            {
+                                if (db != null)
+                                {
+                                    lock (_lock)
+                                    {
+                                        if (!_patchPhase2Initialized)
+                                        {
+                                            LoadTokenizerExtension(db);
+                                            _patchPhase2Initialized = true;
+                                            PatchPhase2(db);
+                                            ThreadLog("Info", "EnhanceChineseSearch - FTS initialized via reflection fallback");
+                                            return;
+                                        }
+                                    }
+                                }
+                                else
+                                {
+                                    ThreadLog("Debug", $"EnhanceChineseSearch - FTS init attempt {attempt + 1}: CreateWritableConnection returned null");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            ThreadLog("Debug", $"EnhanceChineseSearch - FTS init attempt {attempt + 1} failed: {ex.Message}");
+                        }
+                    }
+
+                    ThreadLog("Warn", "EnhanceChineseSearch - FTS reflection init timed out after 60s");
+                }
+                catch (Exception ex)
+                {
+                    ThreadLog("Error", $"EnhanceChineseSearch - FTS reflection init fatal error: {ex}");
+                }
+            })
+            { IsBackground = true, Name = "StrmAssistant-FTS-Init" };
+            thread.Start();
         }
 
         private static void PatchPhase2(IDatabaseConnection connection)
         {
-            string ftsTableName;
-
-            if (AppVer >= Ver4830)
-            {
-                ftsTableName = "fts_search9";
-            }
-            else
-            {
-                ftsTableName = "fts_search8";
-            }
+            // 动态发现 FTS 表名，而非硬编码版本号映射
+            string ftsTableName = DiscoverFtsTableName(connection);
 
             var tokenizerCheckQuery = $@"
                 SELECT 
@@ -924,7 +1029,7 @@ namespace StrmAssistant.Mod
                 if (fullStr.Length == 0 && initStr.Length == 0) return;
 
                 // 全拼连写：去掉所有空格
-                var fullConnected = Regex.Replace(fullStr, @"\s+", string.Empty);
+                var fullConnected = WhitespaceRegex.Replace(fullStr, string.Empty);
                 if (fullConnected.Length > 0 && seenFull.Add(fullConnected))
                 {
                     // 空格分隔形式（unicode61 拆分单字 token，仍然有用）
@@ -938,7 +1043,7 @@ namespace StrmAssistant.Mod
                 }
 
                 // 首字母连写
-                var initConnected = Regex.Replace(initStr, @"\s+", string.Empty);
+                var initConnected = WhitespaceRegex.Replace(initStr, string.Empty);
                 if (initConnected.Length > 0 && seenInitials.Add(initConnected))
                 {
                     sb.Append(' ');
@@ -1013,7 +1118,7 @@ namespace StrmAssistant.Mod
                 }
             }
             // 折叠连续空格
-            return Regex.Replace(sb.ToString().Trim(), @"\s+", " ");
+            return WhitespaceRegex.Replace(sb.ToString().Trim(), " ");
         }
 
         private static string ConvertChineseToPinyinInitials(string value)
@@ -1233,7 +1338,7 @@ namespace StrmAssistant.Mod
                 connection.Execute("DROP TABLE IF EXISTS __test_fts_simple__");
                 return true;
             }
-            catch
+            catch (Exception)
             {
                 // simple tokenizer 不可用
                 return false;
@@ -1252,7 +1357,7 @@ namespace StrmAssistant.Mod
                 connection.Execute("DROP TABLE IF EXISTS __test_fts_unicode__");
                 return true;
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }
@@ -1450,7 +1555,7 @@ namespace StrmAssistant.Mod
 
         private static Sqlite3LoadExtensionDelegate _resolvedLoadExtension;
         private static Sqlite3FreeDelegate _resolvedFree;
-        private static bool _loadExtensionResolved;
+        private static volatile bool _loadExtensionResolved;
         private static string _loadExtensionSource;
 
         private static void EnsureLoadExtensionResolved()
@@ -1476,11 +1581,13 @@ namespace StrmAssistant.Mod
                 Plugin.Instance.Logger.Warn($"EnhanceChineseSearch - Enumerate process modules failed: {ex.Message}");
             }
 
-            // 2) 兜底：常见的 native lib 名称
+            // 2) 兜底：常见的 native lib 名称（Linux / macOS / Windows）
             candidatePaths.AddRange(new[]
             {
                 "e_sqlite3", "libe_sqlite3.so", "libe_sqlite3.so.0", "libe_sqlite3.dylib", "e_sqlite3.dll",
-                "sqlite3", "libsqlite3.so", "libsqlite3.so.0", "libsqlite3.dylib", "sqlite3.dll"
+                "sqlite3", "libsqlite3.so", "libsqlite3.so.0", "libsqlite3.dylib", "sqlite3.dll",
+                // macOS: .NET 7+ AOT-friendly naming convention
+                "libe_sqlite3.osx", "libsqlite3.osx"
             });
 
             foreach (var pathOrName in candidatePaths.Distinct())
@@ -1846,7 +1953,7 @@ namespace StrmAssistant.Mod
         {
             if (itemId <= 0) return;
             if (_pendingFtsRefresh.TryAdd(itemId, 0))
-                _pendingFtsRefreshOrder.Push(itemId);
+                _pendingFtsRefreshOrder.Enqueue(itemId);
             if (_enrichedIndexActive)
                 SchedulePendingFtsRefresh();
         }
@@ -1864,7 +1971,7 @@ namespace StrmAssistant.Mod
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Instance.Logger.Warn(
+                    ThreadLog("Warn",
                         $"EnhanceChineseSearch - Scheduled FTS refresh failed: {ex.Message}");
                 }
                 finally
@@ -1873,7 +1980,10 @@ namespace StrmAssistant.Mod
                     if (!_pendingFtsRefresh.IsEmpty)
                         SchedulePendingFtsRefresh();
                 }
-            });
+            }).ContinueWith(t =>
+            {
+                if (t.IsFaulted) ThreadLog("Error", $"EnhanceChineseSearch - PendingFtsRefresh unobserved fault: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}");
+            }, TaskScheduler.Default);
         }
 
         // 启动后立即运行一次（延迟 30 秒），之后每 15 分钟循环扫描 fts 缺失条目并入队刷新。
@@ -1909,7 +2019,7 @@ namespace StrmAssistant.Mod
                             }
                             catch (Exception ex)
                             {
-                                Plugin.Instance.Logger.Warn(
+                                ThreadLog("Warn",
                                     $"EnhanceChineseSearch - FTS catch-up scan failed: {ex.Message}");
                             }
                         }
@@ -1918,7 +2028,10 @@ namespace StrmAssistant.Mod
                     }
                 }
                 catch (OperationCanceledException) { }
-            });
+            }, token).ContinueWith(t =>
+            {
+                if (t.IsFaulted) ThreadLog("Error", $"EnhanceChineseSearch - CatchUpLoop unobserved fault: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}");
+            }, TaskScheduler.Default);
         }
 
         internal static void StopCatchUpLoop()
@@ -1949,32 +2062,34 @@ namespace StrmAssistant.Mod
                     {
                         if (db == null)
                         {
-                            Plugin.Instance.Logger.Warn("EnhanceChineseSearch - Restore skipped: writable library db connection unavailable");
+                            ThreadLog("Warn", "EnhanceChineseSearch - Restore skipped: writable library db connection unavailable");
                             return;
                         }
 
                         db.Execute("PRAGMA busy_timeout=5000");
                         EnsureExtensionLoadedOnConnection(db);
-
                         var ftsTableName = AppVer >= Ver4830 ? "fts_search9" : "fts_search8";
                         if (RebuildFts(db, ftsTableName, "unicode61 remove_diacritics 2"))
                         {
                             CurrentTokenizerName = "unicode61 remove_diacritics 2";
                             _ftsTableName = ftsTableName;
-                            Plugin.Instance.Logger.Info("EnhanceChineseSearch - Restore Success");
+                            ThreadLog("Info", "EnhanceChineseSearch - Restore Success");
                             ResetOptions();
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Instance.Logger.Warn($"EnhanceChineseSearch - Restore failed: {ex.Message}");
+                    ThreadLog("Warn", $"EnhanceChineseSearch - Restore failed: {ex.Message}");
                 }
                 finally
                 {
                     Interlocked.Exchange(ref _restoreFtsScheduled, 0);
                 }
-            });
+            }).ContinueWith(t =>
+            {
+                if (t.IsFaulted) ThreadLog("Error", $"EnhanceChineseSearch - RestoreFtsIndex unobserved fault: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}");
+            }, TaskScheduler.Default);
 
             return true;
         }
@@ -2001,7 +2116,7 @@ namespace StrmAssistant.Mod
                         if (long.TryParse(idStr, out var id))
                         {
                             if (_pendingFtsRefresh.TryAdd(id, 0))
-                                _pendingFtsRefreshOrder.Push(id);
+                                _pendingFtsRefreshOrder.Enqueue(id);
                             count++;
                         }
                     }
@@ -2051,8 +2166,9 @@ namespace StrmAssistant.Mod
                     db = (IDatabaseConnection)_createConnection.Invoke(repository, args);
                     if (IsWritableConnection(db)) return db;
                 }
-                catch
+                catch (Exception)
                 {
+                    ThreadLog("DEBUG", "CreateWritableConnection - Failed with current args, trying next");
                 }
 
                 db?.Dispose();
@@ -2281,7 +2397,7 @@ namespace StrmAssistant.Mod
         private static long[] DequeuePendingFtsRefreshIds(int maxRows)
         {
             var ids = new List<long>(maxRows);
-            while (ids.Count < maxRows && _pendingFtsRefreshOrder.TryPop(out var id))
+            while (ids.Count < maxRows && _pendingFtsRefreshOrder.TryDequeue(out var id))
             {
                 if (_pendingFtsRefresh.ContainsKey(id))
                     ids.Add(id);
@@ -2360,6 +2476,42 @@ namespace StrmAssistant.Mod
                 ? searchScope
                 : includeItemTypes.Intersect(searchScope, StringComparer.Ordinal).ToArray();
             query.SearchTerm = null;
+        }
+
+        /// <summary>
+        /// 清理所有静态状态，供插件热重载时调用
+        /// </summary>
+        public static void Cleanup()
+        {
+            _patchPhase2Initialized = false;
+            _simpleQueryAvailable = false;
+            _tokenizerReady = false;
+            _excludeOriginalTitle = false;
+            _traditionalToSimplified = false;
+            _suppressSearchSuggestions = false;
+            _digitsAsTmdbId = false;
+            _extensionNeedsLoading = false;
+            _useUnicode61Mode = false;
+            _ftsTableName = null;
+            _enrichedIndexActive = false;
+            _libraryRepository = null;
+            _tokenizerPath = null;
+            CurrentTokenizerName = "unknown";
+
+            // 取消正在进行的 catch-up 任务
+            _catchUpCts?.Cancel();
+            _catchUpCts?.Dispose();
+            _catchUpCts = null;
+
+            // 清空待刷新队列
+            while (_pendingFtsRefreshOrder.TryDequeue(out _)) { }
+            _pendingFtsRefresh.Clear();
+
+            // 重置调度标志
+            Interlocked.Exchange(ref _ftsRefreshScheduled, 0);
+            Interlocked.Exchange(ref _restoreFtsScheduled, 0);
+
+            // ConditionalWeakTable 会随键的 GC 自动清理，无需手动清除
         }
     }
 }

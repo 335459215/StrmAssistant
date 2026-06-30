@@ -34,17 +34,17 @@ namespace StrmAssistant.Mod
         {
             var embyProviders = Assembly.Load("Emby.Providers");
             var audioFingerprintManager = embyProviders?.GetType("Emby.Providers.Markers.AudioFingerprintManager");
-            _isIntroDetectionSupported = audioFingerprintManager?.GetMethod("IsIntroDetectionSupported",
+            _isIntroDetectionSupported = SafeGetMethod(audioFingerprintManager, "IsIntroDetectionSupported",
                 BindingFlags.Public | BindingFlags.Instance);
             var markerScheduledTask = embyProviders?.GetType("Emby.Providers.Markers.MarkerScheduledTask");
-            _createQueryForEpisodeIntroDetection = markerScheduledTask?.GetMethod(
+            _createQueryForEpisodeIntroDetection = SafeGetMethod(markerScheduledTask,
                 "CreateQueryForEpisodeIntroDetection",
                 BindingFlags.Public | BindingFlags.Static);
 
             var sequenceDetection = embyProviders?.GetType("Emby.Providers.Markers.SequenceDetection");
-            _detectSequences = sequenceDetection?.GetMethods(BindingFlags.Static | BindingFlags.Public)
-                .FirstOrDefault(m => m.Name == "DetectSequences" && m.GetParameters().Length == 8);
-            _onFailedToFindIntro = audioFingerprintManager?.GetMethod("OnFailedToFindIntro",
+            _detectSequences = SafeGetMethod(sequenceDetection, "DetectSequences",
+                BindingFlags.Static | BindingFlags.Public, 8);
+            _onFailedToFindIntro = SafeGetMethod(audioFingerprintManager, "OnFailedToFindIntro",
                 BindingFlags.NonPublic | BindingFlags.Static);
         }
 

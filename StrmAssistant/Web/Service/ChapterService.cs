@@ -31,6 +31,12 @@ namespace StrmAssistant.Web.Service
         {
             var itemById = _libraryManager.GetItemById(request.Id);
 
+            if (itemById == null)
+            {
+                _logger.Warn("ClearIntro - Item not found: {0}", request.Id);
+                return;
+            }
+
             if (!(itemById is Series || itemById is Season)) return;
 
             var episodes = Plugin.ChapterApi.FetchClearTaskItems(new List<BaseItem> { itemById });

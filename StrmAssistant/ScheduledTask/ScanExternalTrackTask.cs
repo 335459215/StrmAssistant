@@ -32,13 +32,13 @@ namespace StrmAssistant.ScheduledTask
             _logger.Info("Tier2 Max Concurrent Count: " +
                          Plugin.Instance.MainOptionsStore.GetOptions().GeneralOptions.Tier2MaxConcurrentCount);
 
-            await Task.Yield();
+            await Task.Delay(0).ConfigureAwait(false);
             progress.Report(0);
 
             var items = Plugin.LibraryApi.FetchPostExtractTaskItems(false);
             _logger.Info("ExternalTrack - Number of items: " + items.Count);
 
-            double total = items.Count;
+            double total = items.Count > 0 ? items.Count : 1;
             var index = 0;
             var current = 0;
 
@@ -111,7 +111,7 @@ namespace StrmAssistant.ScheduledTask
                             _logger.Info("ExternalTrack - Progress " + currentCount + "/" + total + " - " +
                                          "Task " + taskIndex + ": " + taskItem.Path);
                         }
-                    }, cancellationToken);
+                    });
                     tasks.Add(task);
 
                     if (tasks.Count >= 100)

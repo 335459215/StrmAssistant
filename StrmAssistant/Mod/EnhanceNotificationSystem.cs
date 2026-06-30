@@ -44,16 +44,13 @@ namespace StrmAssistant.Mod
         {
             var notificationsAssembly = Assembly.Load("Emby.Notifications");
             var notificationManager = notificationsAssembly?.GetType("Emby.Notifications.NotificationManager");
-            _convertToGroups = notificationManager?.GetMethod("ConvertToGroups",
+            _convertToGroups = SafeGetMethod(notificationManager, "ConvertToGroups",
                 BindingFlags.Instance | BindingFlags.NonPublic);
-            _sendNotification = notificationManager?.GetMethod("SendNotification",
-                BindingFlags.NonPublic | BindingFlags.Instance, null,
-                new[] { typeof(INotifier), typeof(NotificationInfo[]), typeof(NotificationRequest), typeof(bool) },
-                null);
+            _sendNotification = SafeGetMethod(notificationManager, "SendNotification",
+                BindingFlags.NonPublic | BindingFlags.Instance, 4);
             var notificationQueueManager = notificationsAssembly?.GetType("Emby.Notifications.NotificationQueueManager");
-            _queueNotification = notificationQueueManager?.GetMethod("QueueNotification",
-                BindingFlags.Instance | BindingFlags.Public, null,
-                new[] { typeof(INotifier), typeof(InternalNotificationRequest), typeof(int) }, null);
+            _queueNotification = SafeGetMethod(notificationQueueManager, "QueueNotification",
+                BindingFlags.Instance | BindingFlags.Public, 3);
 
             var embyApi = Assembly.Load("Emby.Api");
             var libraryService = embyApi?.GetType("Emby.Api.Library.LibraryService");
@@ -210,7 +207,7 @@ namespace StrmAssistant.Mod
                 Task.Run(() =>
                         Plugin.NotificationApi.DeepDeleteSendNotification(item, user,
                             new HashSet<string>(__state.Keys)))
-                    .ConfigureAwait(false);
+                    .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"EnhanceNotificationSystem DeepDeleteSendNotification failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
             }
         }
     }

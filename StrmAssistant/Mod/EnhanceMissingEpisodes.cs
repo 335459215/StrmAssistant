@@ -32,7 +32,7 @@ namespace StrmAssistant.Mod
         {
             var embyProviders = Assembly.Load("Emby.Providers");
             var providerManager = embyProviders?.GetType("Emby.Providers.Manager.ProviderManager");
-            _getEnabledMetadataProviders = providerManager?.GetMethod("GetEnabledMetadataProviders",
+            _getEnabledMetadataProviders = SafeGetMethod(providerManager, "GetEnabledMetadataProviders",
                 BindingFlags.Instance | BindingFlags.Public);
         }
 

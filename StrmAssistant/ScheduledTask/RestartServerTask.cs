@@ -42,7 +42,7 @@ namespace StrmAssistant.ScheduledTask
         public async Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
         {
             _logger.Info("RestartServerTask - Initiating server restart");
-            await Task.Yield();
+            await Task.Delay(0).ConfigureAwait(false);
             progress.Report(50);
 
             try

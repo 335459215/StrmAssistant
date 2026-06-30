@@ -82,54 +82,57 @@ namespace StrmAssistant.Mod
         {
             var embyProviders = Assembly.Load("Emby.Providers");
             var providerManager = embyProviders?.GetType("Emby.Providers.Manager.ProviderManager");
-            _canRefreshMetadata = providerManager?.GetMethod("CanRefresh", BindingFlags.Static | BindingFlags.NonPublic);
-            _canRefreshImage = providerManager?.GetMethod("CanRefresh", BindingFlags.Instance | BindingFlags.NonPublic);
+            _canRefreshMetadata = SafeGetMethod(providerManager, "CanRefresh", BindingFlags.Static | BindingFlags.NonPublic);
+            _canRefreshImage = SafeGetMethod(providerManager, "CanRefresh", BindingFlags.Instance | BindingFlags.NonPublic);
             var itemImageProvider = embyProviders?.GetType("Emby.Providers.Manager.ItemImageProvider");
-            _clearImages = itemImageProvider?.GetMethod("ClearImages", BindingFlags.Instance | BindingFlags.NonPublic);
+            _clearImages = SafeGetMethod(itemImageProvider, "ClearImages", BindingFlags.Instance | BindingFlags.NonPublic);
             _isSaverEnabledForItem =
-                providerManager?.GetMethod("IsSaverEnabledForItem", BindingFlags.Instance | BindingFlags.NonPublic);
+                SafeGetMethod(providerManager, "IsSaverEnabledForItem", BindingFlags.Instance | BindingFlags.NonPublic);
             _afterMetadataRefresh =
-                typeof(BaseItem).GetMethod("AfterMetadataRefresh", BindingFlags.Instance | BindingFlags.Public);
+                SafeGetMethod(typeof(BaseItem), "AfterMetadataRefresh", BindingFlags.Instance | BindingFlags.Public);
             var fFProbeProvider = embyProviders?.GetType("Emby.Providers.MediaInfo.FFProbeProvider");
             _isProbingAllowed =
-                fFProbeProvider?.GetMethod("IsProbingAllowed", BindingFlags.Static | BindingFlags.NonPublic);
+                SafeGetMethod(fFProbeProvider, "IsProbingAllowed", BindingFlags.Static | BindingFlags.NonPublic);
 
             var mediaEncodingAssembly = Assembly.Load("Emby.Server.MediaEncoding");
             var mediaProbeManager =
                 mediaEncodingAssembly?.GetType("Emby.Server.MediaEncoding.Probing.MediaProbeManager");
             _runFfProcess =
-                mediaProbeManager?.GetMethod("RunFfProcess", BindingFlags.Instance | BindingFlags.NonPublic);
+                SafeGetMethod(mediaProbeManager, "RunFfProcess", BindingFlags.Instance | BindingFlags.NonPublic);
             var encodingHelpers = mediaEncodingAssembly?.GetType("Emby.Server.MediaEncoding.Encoder.EncodingHelpers");
             _getInputArgument =
-                encodingHelpers?.GetMethod("GetInputArgument", BindingFlags.Static | BindingFlags.Public);
+                SafeGetMethod(encodingHelpers, "GetInputArgument", BindingFlags.Static | BindingFlags.Public);
             var probeResultNormalizer =
                 mediaEncodingAssembly?.GetType("Emby.Server.MediaEncoding.Probing.ProbeResultNormalizer");
             _getMediaInfo =
-                probeResultNormalizer?.GetMethod("GetMediaInfo", BindingFlags.Instance | BindingFlags.Public);
+                SafeGetMethod(probeResultNormalizer, "GetMediaInfo", BindingFlags.Instance | BindingFlags.Public);
 
             var embyApi = Assembly.Load("Emby.Api");
             var libraryStructureService = embyApi?.GetType("Emby.Api.Library.LibraryStructureService");
-            _addVirtualFolder = libraryStructureService?.GetMethod("Post",
-                new[] { embyApi?.GetType("Emby.Api.Library.AddVirtualFolder") });
-            _removeVirtualFolder = libraryStructureService?.GetMethod("Any",
-                new[] { embyApi?.GetType("Emby.Api.Library.RemoveVirtualFolder") });
-            _addMediaPath = libraryStructureService?.GetMethod("Post",
-                new[] { embyApi?.GetType("Emby.Api.Library.AddMediaPath") });
-            _removeMediaPath = libraryStructureService?.GetMethod("Any",
-                new[] { embyApi?.GetType("Emby.Api.Library.RemoveMediaPath") });
+            var addVirtualFolderType = embyApi?.GetType("Emby.Api.Library.AddVirtualFolder");
+            var removeVirtualFolderType = embyApi?.GetType("Emby.Api.Library.RemoveVirtualFolder");
+            var addMediaPathType = embyApi?.GetType("Emby.Api.Library.AddMediaPath");
+            var removeMediaPathType = embyApi?.GetType("Emby.Api.Library.RemoveMediaPath");
+            _addVirtualFolder = SafeGetMethod(libraryStructureService, "Post",
+                BindingFlags.Instance | BindingFlags.Public, 1);
+            _removeVirtualFolder = SafeGetMethod(libraryStructureService, "Any",
+                BindingFlags.Instance | BindingFlags.Public, 1);
+            _addMediaPath = SafeGetMethod(libraryStructureService, "Post",
+                BindingFlags.Instance | BindingFlags.Public, 1);
+            _removeMediaPath = SafeGetMethod(libraryStructureService, "Any",
+                BindingFlags.Instance | BindingFlags.Public, 1);
 
             var embyServerImplementationsAssembly = Assembly.Load("Emby.Server.Implementations");
             var sqliteItemRepository =
                 embyServerImplementationsAssembly?.GetType("Emby.Server.Implementations.Data.SqliteItemRepository");
-            _saveChapters = sqliteItemRepository?.GetMethod("SaveChapters",
-                BindingFlags.Instance | BindingFlags.Public, null,
-                new[] { typeof(long), typeof(bool), typeof(List<ChapterInfo>) }, null);
+            _saveChapters = SafeGetMethod(sqliteItemRepository, "SaveChapters",
+                BindingFlags.Instance | BindingFlags.Public, 3);
             _deleteChapters =
-                sqliteItemRepository?.GetMethod("DeleteChapters", BindingFlags.Instance | BindingFlags.Public);
+                SafeGetMethod(sqliteItemRepository, "DeleteChapters", BindingFlags.Instance | BindingFlags.Public);
 
             var itemRefreshService = embyApi?.GetType("Emby.Api.ItemRefreshService");
             _getRefreshOptions =
-                itemRefreshService?.GetMethod("GetRefreshOptions", BindingFlags.Instance | BindingFlags.NonPublic);
+                SafeGetMethod(itemRefreshService, "GetRefreshOptions", BindingFlags.Instance | BindingFlags.NonPublic);
         }
 
         protected override void Prepare(bool apply)
@@ -191,7 +194,7 @@ namespace StrmAssistant.Mod
             if (LibraryApi.IsFileShortcut(input))
             {
                 var inputPath = input;
-                var mountPath = Task.Run(async () => await Plugin.LibraryApi.GetStrmMountPath(inputPath)).Result;
+                var mountPath = Task.Run(async () => await Plugin.LibraryApi.GetStrmMountPath(inputPath).ConfigureAwait(false)).GetAwaiter().GetResult();
                 if (!string.IsNullOrEmpty(mountPath))
                 {
                     input = mountPath;
@@ -453,8 +456,8 @@ namespace StrmAssistant.Mod
             if (CurrentRefreshContext.Value.IsExternalSubtitleChanged)
             {
                 var refreshOptions = CurrentRefreshContext.Value.MetadataRefreshOptions;
-                _ = Plugin.SubtitleApi.UpdateExternalSubtitles(item, refreshOptions, false, isPersistInScope)
-                    .ConfigureAwait(false);
+                Plugin.SubtitleApi.UpdateExternalSubtitles(item, refreshOptions, false, isPersistInScope)
+                    .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"ExclusiveExtract UpdateExternalSubtitles failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
             }
         }
 
@@ -515,8 +518,9 @@ namespace StrmAssistant.Mod
                         {
                             if (!CurrentRefreshContext.Value.IsFileChanged)
                             {
-                                _ = Plugin.MediaInfoApi.DeserializeMediaInfo(__instance, directoryService,
-                                    "Exclusive Restore", true).ConfigureAwait(false);
+                                Plugin.MediaInfoApi.DeserializeMediaInfo(__instance, directoryService,
+                                    "Exclusive Restore", true)
+                                    .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"ExclusiveExtract DeserializeMediaInfo failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
                             }
                             else if (!ignoreFileChange)
                             {
@@ -526,22 +530,25 @@ namespace StrmAssistant.Mod
                         }
                         else
                         {
-                            _ = Plugin.MediaInfoApi.SerializeMediaInfo(__instance.InternalId, directoryService, true,
-                                "Exclusive Overwrite").ConfigureAwait(false);
+                            Plugin.MediaInfoApi.SerializeMediaInfo(__instance.InternalId, directoryService, true,
+                                "Exclusive Overwrite")
+                                .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"ExclusiveExtract SerializeMediaInfo(Overwrite) failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
                         }
                     }
                     else if (!CurrentRefreshContext.Value.IsNewItem && CurrentRefreshContext.Value.IsScanning)
                     {
                         if (!Plugin.LibraryApi.HasMediaInfo(__instance))
                         {
-                            _ = Plugin.MediaInfoApi
+                            Plugin.MediaInfoApi
                                 .DeserializeMediaInfo(__instance, directoryService, "Exclusive Restore",
-                                    ignoreFileChange).ConfigureAwait(false);
+                                    ignoreFileChange)
+                                .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"ExclusiveExtract DeserializeMediaInfo(Restore) failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
                         }
                         else if (!CurrentRefreshContext.Value.IsFileChanged)
                         {
-                            _ = Plugin.MediaInfoApi.SerializeMediaInfo(__instance.InternalId, directoryService, false,
-                                "Exclusive Non-existent").ConfigureAwait(false);
+                            Plugin.MediaInfoApi.SerializeMediaInfo(__instance.InternalId, directoryService, false,
+                                "Exclusive Non-existent")
+                                .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"ExclusiveExtract SerializeMediaInfo(NonExistent) failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
                         }
                     }
                 }
@@ -578,6 +585,8 @@ namespace StrmAssistant.Mod
         {
             var id = Traverse.Create(request).Property("Id").GetValue<string>();
             var item = BaseItem.LibraryManager.GetItemById(id);
+
+            if (item == null) return;
 
             Plugin.MediaInfoApi.QueueRefreshAlternateVersions(item, __result, true);
         }

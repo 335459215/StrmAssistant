@@ -6,6 +6,7 @@ using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Persistence;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Model.Logging;
+using StrmAssistant.Mod;
 using StrmAssistant.Web.Api;
 using System;
 using System.Collections.Generic;
@@ -35,6 +36,12 @@ namespace StrmAssistant.Web.Service
         public void Any(DeleteVersion request)
         {
             var item = _libraryManager.GetItemById(request.Id);
+
+            if (item == null)
+            {
+                _logger.Warn("DeleteVersion - Item not found: {0}", request.Id);
+                return;
+            }
 
             if (!(item is Video video) || !(video is Movie || video is Episode) || !video.IsFileProtocol ||
                 video.GetAlternateVersionIds().Count == 0)
@@ -105,9 +112,9 @@ namespace StrmAssistant.Web.Service
                     {
                         _fileSystem.DeleteDirectory(item.GetInternalMetadataPath(), true, true);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        // ignored
+                        ThreadLogHelper.Log("Debug", $"LibraryService DeleteVersion metadata cleanup skipped: {ex.Message}");
                     }
                 }
 
@@ -115,7 +122,7 @@ namespace StrmAssistant.Web.Service
                 {
                     allMountPaths = allMountPaths
                         .Concat(mountPaths)
-                        .ToDictionary(kv => kv.Key, kv => kv.Value);;
+                        .ToDictionary(kv => kv.Key, kv => kv.Value);
                 }
             }
 
@@ -123,14 +130,15 @@ namespace StrmAssistant.Web.Service
 
             if (enableDeepDelete && localMountPaths.Count > 0)
             {
-                Task.Run(() => Plugin.LibraryApi.ExecuteDeepDelete(localMountPaths)).ConfigureAwait(false);
+                Task.Run(() => Plugin.LibraryApi.ExecuteDeepDelete(localMountPaths))
+                    .ContinueWith(t => { if (t.IsFaulted) ThreadLogHelper.Log("Error", $"LibraryService ExecuteDeepDelete failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
             }
 
             if (enableNotification && allMountPaths.Count > 0 && user != null)
             {
                 Task.Run(() => Plugin.NotificationApi.DeepDeleteSendNotification(item, user,
                         new HashSet<string>(allMountPaths.Keys)))
-                    .ConfigureAwait(false);
+                    .ContinueWith(t => { if (t.IsFaulted) ThreadLogHelper.Log("Error", $"LibraryService DeepDeleteSendNotification failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
             }
         }
 

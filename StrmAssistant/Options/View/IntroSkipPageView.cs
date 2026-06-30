@@ -65,15 +65,15 @@ namespace StrmAssistant.Options.View
             };
             IntroSkipOptions.ClearIntroResult.Add(progressItem);
             RaiseUIViewInfoChanged();
-            await Task.Delay(10.ms());
+            await Task.Delay(10.ms()).ConfigureAwait(false);
 
             var episodes = Plugin.ChapterApi.FetchClearTaskItems(new List<BaseItem>());
 
             progressItem.PercentComplete = 20;
             RaiseUIViewInfoChanged();
-            await Task.Delay(10.ms());
+            await Task.Delay(10.ms()).ConfigureAwait(false);
 
-            var total = episodes.Count;
+            var total = episodes.Count > 0 ? episodes.Count : 1;
             var current = 0;
 
             foreach (var item in episodes)
@@ -85,7 +85,7 @@ namespace StrmAssistant.Options.View
                 progressItem.PercentComplete = adjustedProgress;
                 Plugin.Instance.Logger.Info("IntroSkipClear - Task " + current + "/" + total + " - " + item.Path);
                 RaiseUIViewInfoChanged();
-                await Task.Delay(10.ms());
+                await Task.Delay(10.ms()).ConfigureAwait(false);
             }
 
             IntroSkipOptions.ClearIntroButton.IsEnabled = true;
@@ -94,7 +94,7 @@ namespace StrmAssistant.Options.View
             progressItem.Icon = IconNames.info;
             progressItem.Status = ItemStatus.Succeeded;
             RaiseUIViewInfoChanged();
-            await Task.Delay(2000);
+            await Task.Delay(2000).ConfigureAwait(false);
             IntroSkipOptions.ClearIntroResult.Clear();
             RaiseUIViewInfoChanged();
         }

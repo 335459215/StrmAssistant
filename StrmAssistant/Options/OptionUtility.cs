@@ -18,13 +18,13 @@ namespace StrmAssistant.Options
 {
     public static class Utility
     {
-        private static volatile HashSet<string> _selectedExclusiveFeatures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private static volatile string[] _selectedExclusiveFeatures = Array.Empty<string>();
         private static readonly ConcurrentDictionary<long, ConcurrentDictionary<string, byte>> ItemExclusiveFeatures =
             new ConcurrentDictionary<long, ConcurrentDictionary<string, byte>>();
 
-        private static volatile HashSet<string> _selectedCatchupTasks = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private static volatile HashSet<string> _selectedIntroSkipPreferences = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private static string[] _includeItemTypes = Array.Empty<string>();
+        private static volatile string[] _selectedCatchupTasks = Array.Empty<string>();
+        private static volatile string[] _selectedIntroSkipPreferences = Array.Empty<string>();
+        private static volatile string[] _includeItemTypes = Array.Empty<string>();
 
         public static void InitializeOptionCache()
         {
@@ -50,7 +50,7 @@ namespace StrmAssistant.Options
                 featureSet.Add(ExclusiveControl.NoPersistIntegration.ToString());
             }
 
-            _selectedExclusiveFeatures = featureSet;
+            _selectedExclusiveFeatures = featureSet.ToArray(); // 不可变快照，原子引用替换
         }
 
         public static bool IsExclusiveFeatureSelected(long? itemId = null, params ExclusiveControl[] featuresToCheck)
@@ -116,7 +116,7 @@ namespace StrmAssistant.Options
         {
             _selectedCatchupTasks = new HashSet<string>(
                 currentScope?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) ??
-                Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+                Array.Empty<string>(), StringComparer.OrdinalIgnoreCase).ToArray(); // 不可变快照
         }
 
         public static bool IsCatchupTaskSelected(params CatchupTask[] tasksToCheck)
@@ -141,7 +141,7 @@ namespace StrmAssistant.Options
         {
             _selectedIntroSkipPreferences = new HashSet<string>(
                 currentPreferences?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries) ??
-                Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+                Array.Empty<string>(), StringComparer.OrdinalIgnoreCase).ToArray(); // 不可变快照
         }
 
         public static bool IsIntroSkipPreferenceSelected(params IntroSkipPreference[] preferencesToCheck)

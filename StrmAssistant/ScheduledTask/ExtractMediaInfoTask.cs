@@ -125,7 +125,7 @@ namespace StrmAssistant.ScheduledTask
                                 {
                                     await Task.Delay(cooldownSeconds.Value * 1000, cancellationToken).ConfigureAwait(false);
                                 }
-                                catch
+                                catch (Exception)
                                 {
                                     // ignored
                                 }
@@ -142,7 +142,7 @@ namespace StrmAssistant.ScheduledTask
                                     $"MediaInfoExtract - Progress {currentCount}/{total} - Task {taskIndex}: {taskItem.Path}");
                             }
                         }
-                    }, cancellationToken);
+                    });
                     tasks.Add(task);
 
                     // 周期性剔除已完成 task，释放它们捕获的 BaseItem 闭包
@@ -205,6 +205,7 @@ namespace StrmAssistant.ScheduledTask
         public bool IsEnabled => true;
         public bool IsLogged => true;
 
-        public static bool IsRunning { get; private set; }
+        private static volatile bool _isRunning;
+        public static bool IsRunning { get => _isRunning; private set => _isRunning = value; }
     }
 }

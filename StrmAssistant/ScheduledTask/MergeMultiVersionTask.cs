@@ -90,8 +90,7 @@ namespace StrmAssistant.ScheduledTask
                             var refreshOptions = Plugin.MetadataApi.GetMetadataValidationRefreshOptions();
                             Traverse.Create(refreshOptions).Property("Recursive").SetValue(true);
 
-                            await _providerManager.RefreshFullItem(series, refreshOptions, cancellationToken)
-                                .ConfigureAwait(false);
+                            await _providerManager.RefreshFullItem(series, refreshOptions, cancellationToken).ConfigureAwait(false);
                         }
 
                         cumulativeProgress += seriesProgressWeight;
@@ -120,8 +119,7 @@ namespace StrmAssistant.ScheduledTask
                         var refreshOptions = Plugin.MetadataApi.GetMetadataValidationRefreshOptions();
                         Traverse.Create(refreshOptions).Property("Recursive").SetValue(true);
 
-                        await _providerManager.RefreshFullItem(series, refreshOptions, cancellationToken)
-                            .ConfigureAwait(false);
+                        await _providerManager.RefreshFullItem(series, refreshOptions, cancellationToken).ConfigureAwait(false);
 
                         cumulativeProgress += seriesProgressWeight;
                         progress.Report(cumulativeProgress);
@@ -136,7 +134,7 @@ namespace StrmAssistant.ScheduledTask
                 }
             }
 
-            if (processMovies)
+            if (processMovies && movieLibraryGroups.Length > 0)
             {
                 var totalGroups = movieLibraryGroups.Length;
                 var groupProgressWeight = processSeries ? 50.0 / totalGroups : 100.0 / totalGroups;
@@ -151,7 +149,7 @@ namespace StrmAssistant.ScheduledTask
                         progress.Report(cumulativeProgress);
                     });
 
-                    ExecuteMergeMovies(group, groupProgress);
+                    ExecuteMergeMovies(group, groupProgress, cancellationToken);
                 }
             }
 
@@ -302,7 +300,8 @@ namespace StrmAssistant.ScheduledTask
             return libraryGroups;
         }
 
-        private void ExecuteMergeMovies(long[] parents, IProgress<double> groupProgress = null)
+        private void ExecuteMergeMovies(long[] parents, IProgress<double> groupProgress = null,
+            CancellationToken cancellationToken = default)
         {
             var allMovies = _libraryManager.GetItemList(new InternalItemsQuery
             {
@@ -366,11 +365,13 @@ namespace StrmAssistant.ScheduledTask
                     .ToDictionary(d => d.Key,
                         d => d.GroupBy(kvp => kvp.item.InternalId).Select(g => g.First().item).ToList());
 
-                var total = rootIdGroups.Count;
+                var total = rootIdGroups.Count > 0 ? rootIdGroups.Count : 1;
                 var current = 0;
 
                 foreach (var group in rootIdGroups)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     var movies = group
                         .SelectMany(
                             rootId => movieLookup.TryGetValue(rootId, out var m) ? m : Enumerable.Empty<Movie>())
@@ -379,11 +380,19 @@ namespace StrmAssistant.ScheduledTask
                         .OfType<BaseItem>()
                         .ToArray();
 
-                    _libraryManager.MergeItems(movies);
-
-                    foreach (var item in movies)
+                    try
                     {
-                        _logger.Info($"MergeMultiVersion - Movie merged: {item.Name} - {item.Path}");
+                        _libraryManager.MergeItems(movies);
+
+                        foreach (var item in movies)
+                        {
+                            _logger.Info($"MergeMultiVersion - Movie merged: {item.Name} - {item.Path}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.Error($"MergeMultiVersion - Failed to merge group with {movies.Length} items: {ex.Message}");
+                        // 继续处理下一组，避免一个失败组阻塞整个任务
                     }
 
                     current++;

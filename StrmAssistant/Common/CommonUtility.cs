@@ -18,6 +18,12 @@ namespace StrmAssistant.Common
     {
         private static readonly Regex MovieDbApiKeyRegex = new Regex("^[a-fA-F0-9]{32}$", RegexOptions.Compiled);
 
+        // 共享 HttpClient，避免每次调用新建导致的端口耗尽
+        private static readonly HttpClient _sharedProxyClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromMilliseconds(666)
+        };
+
         public static bool IsValidHttpUrl(string url)
         {
             if (string.IsNullOrWhiteSpace(url)) return false;
@@ -44,7 +50,7 @@ namespace StrmAssistant.Common
                        (uri.IsDefaultPort || (uri.Port > 0 && uri.Port <= 65535)) &&
                        (string.IsNullOrEmpty(uri.UserInfo) || uri.UserInfo.Contains(":"));
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }
@@ -77,7 +83,7 @@ namespace StrmAssistant.Common
                     return true;
                 }
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }
@@ -89,15 +95,20 @@ namespace StrmAssistant.Common
         {
             try
             {
-                using var tcpClient = new TcpClient();
-                var stopwatch = Stopwatch.StartNew();
-                if (tcpClient.ConnectAsync(host, port).Wait(999))
+                // 用 Task.Run 避免 .Wait() 在同步上下文中的 SynchronizationContext 死锁
+                return Task.Run(() =>
                 {
-                    stopwatch.Stop();
-                    return (true, stopwatch.Elapsed.TotalMilliseconds);
-                }
+                    using var tcpClient = new TcpClient();
+                    var stopwatch = Stopwatch.StartNew();
+                    if (tcpClient.ConnectAsync(host, port).Wait(999))
+                    {
+                        stopwatch.Stop();
+                        return (true, (double?)stopwatch.Elapsed.TotalMilliseconds);
+                    }
+                    return (false, (double?)null);
+                }).GetAwaiter().GetResult();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }
@@ -113,41 +124,57 @@ namespace StrmAssistant.Common
             try
             {
                 var proxyUrl = new UriBuilder(scheme, host, port).Uri;
-                using var handler = new HttpClientHandler();
-                handler.Proxy = new WebProxy(proxyUrl)
+                var proxy = new WebProxy(proxyUrl)
                 {
                     Credentials = !string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password)
                         ? new NetworkCredential(username, password)
                         : null
                 };
-                handler.UseProxy = true;
 
-                using var client = new HttpClient(handler);
-                client.Timeout = TimeSpan.FromMilliseconds(666);
-
-                var task1 = client.GetAsync("http://www.gstatic.com/generate_204");
-                var task2 = client.GetAsync("http://www.google.com/generate_204");
-
-                var stopwatch = Stopwatch.StartNew();
-                var completedTask = Task.WhenAny(task1, task2).Result;
-                stopwatch.Stop();
-
-                if (completedTask.Status == TaskStatus.RanToCompletion && completedTask.Result.IsSuccessStatusCode &&
-                    completedTask.Result.StatusCode == HttpStatusCode.NoContent)
+                // 用 Task.Run 避免 .Result 死锁
+                httpPing = Task.Run(async () =>
                 {
-                    httpPing = stopwatch.Elapsed.TotalMilliseconds;
-                }
-                else
-                {
-                    var otherTask = completedTask == task1 ? task2 : task1;
-                    if (otherTask.Status == TaskStatus.RanToCompletion && otherTask.Result.IsSuccessStatusCode &&
-                        otherTask.Result.StatusCode == HttpStatusCode.NoContent)
+                    using var handler = new HttpClientHandler
                     {
-                        httpPing = stopwatch.Elapsed.TotalMilliseconds;
+                        Proxy = proxy,
+                        UseProxy = true
+                    };
+                    using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMilliseconds(666) };
+
+                    var task1 = client.GetAsync("http://www.gstatic.com/generate_204");
+                    var task2 = client.GetAsync("http://www.google.com/generate_204");
+
+                    var stopwatch = Stopwatch.StartNew();
+                    var completedTask = await Task.WhenAny(task1, task2).ConfigureAwait(false);
+                    stopwatch.Stop();
+
+                    double? result = null;
+                    if (completedTask.Status == TaskStatus.RanToCompletion)
+                    {
+                        var response = await completedTask.ConfigureAwait(false);
+                        if (response.IsSuccessStatusCode && response.StatusCode == HttpStatusCode.NoContent)
+                        {
+                            result = stopwatch.Elapsed.TotalMilliseconds;
+                        }
                     }
-                }
+
+                    if (result == null)
+                    {
+                        var otherTask = completedTask == task1 ? task2 : task1;
+                        if (otherTask.Status == TaskStatus.RanToCompletion)
+                        {
+                            var otherResponse = await otherTask.ConfigureAwait(false);
+                            if (otherResponse.IsSuccessStatusCode && otherResponse.StatusCode == HttpStatusCode.NoContent)
+                            {
+                                result = stopwatch.Elapsed.TotalMilliseconds;
+                            }
+                        }
+                    }
+
+                    return result;
+                }).GetAwaiter().GetResult();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }
@@ -192,7 +219,7 @@ namespace StrmAssistant.Common
                 var fileInfo = new FileInfo(path);
                 return fileInfo.Exists && fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }
@@ -205,7 +232,7 @@ namespace StrmAssistant.Common
                 var fileInfo = new FileInfo(path);
                 return fileInfo.LinkTarget;
             }
-            catch
+            catch (Exception)
             {
                 return null;
             }

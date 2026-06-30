@@ -176,7 +176,7 @@ namespace StrmAssistant.Core
         {
             try
             {
-                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
                 var dir = Path.GetDirectoryName(filePath);
                 var archiveName = $"{Path.GetFileNameWithoutExtension(fileName)}_rotated_{timestamp}.txt";
                 var archivePath = Path.Combine(dir, archiveName);
@@ -186,7 +186,7 @@ namespace StrmAssistant.Core
 
                 // 创建新的空日志文件，让 Emby 继续写入
                 // Emby 会自动检测并创建新文件，但先创建一个空的确保不丢失日志
-                File.WriteAllText(filePath, $"[{DateTime.Now:O}] Log rotated by StrmAssistant LogRotationManager. Previous file archived as {archiveName}\r\n");
+                File.WriteAllText(filePath, $"[{DateTime.UtcNow:O}] Log rotated by StrmAssistant LogRotationManager. Previous file archived as {archiveName}\r\n");
             }
             catch (Exception ex)
             {
@@ -201,7 +201,7 @@ namespace StrmAssistant.Core
         {
             if (!Directory.Exists(_logDirectory)) return;
 
-            var cutoff = DateTime.Now.AddDays(-_retentionDays);
+            var cutoff = DateTime.UtcNow.AddDays(-_retentionDays);
 
             try
             {
@@ -211,7 +211,7 @@ namespace StrmAssistant.Core
                     try
                     {
                         var info = new FileInfo(file);
-                        if (info.Exists && info.LastWriteTime < cutoff)
+                        if (info.Exists && info.LastWriteTimeUtc < cutoff)
                         {
                             var name = Path.GetFileName(file);
                             var sizeKB = info.Length / 1024.0;
@@ -232,12 +232,12 @@ namespace StrmAssistant.Core
                     try
                     {
                         var info = new FileInfo(file);
-                        if (info.Exists && info.LastWriteTime < cutoff)
+                        if (info.Exists && info.LastWriteTimeUtc < cutoff)
                         {
                             info.Delete();
                         }
                     }
-                    catch { /* ignore */ }
+                    catch (IOException) { /* file locked — safe to skip */ }
                 }
             }
             catch (Exception ex)
@@ -253,7 +253,7 @@ namespace StrmAssistant.Core
         {
             if (!Directory.Exists(_logDirectory)) return;
 
-            var cutoff = DateTime.Now.AddDays(-_retentionDays);
+            var cutoff = DateTime.UtcNow.AddDays(-_retentionDays);
 
             try
             {
@@ -263,15 +263,15 @@ namespace StrmAssistant.Core
                     try
                     {
                         var info = new FileInfo(file);
-                        if (info.Exists && info.LastWriteTime < cutoff)
+                        if (info.Exists && info.LastWriteTimeUtc < cutoff)
                         {
                             info.Delete();
                         }
                     }
-                    catch { /* ignore */ }
+                    catch (IOException) { /* file locked — safe to skip */ }
                 }
             }
-            catch { /* ignore */ }
+            catch (IOException) { /* log dir cleanup — safe to skip */ }
         }
 
         public void Dispose()

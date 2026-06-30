@@ -41,8 +41,7 @@ namespace StrmAssistant.Provider
                     MovieDbEpisodeGroup.LocalEpisodeGroupFileName);
                 EnhanceMissingEpisodes.CurrentSeriesContainingFolderPath.Value = null;
 
-                episodeGroupInfo = await Plugin.MetadataApi.FetchLocalEpisodeGroup(localEpisodeGroupPath)
-                    .ConfigureAwait(false);
+                episodeGroupInfo = await Plugin.MetadataApi.FetchLocalEpisodeGroup(localEpisodeGroupPath).ConfigureAwait(false);
             }
 
             if (episodeGroupInfo is null && !string.IsNullOrEmpty(episodeGroupId))
@@ -58,8 +57,7 @@ namespace StrmAssistant.Provider
             {
                 if (string.IsNullOrEmpty(episodeGroupInfo.groups.FirstOrDefault()?.episodes.FirstOrDefault()?.name))
                 {
-                    seriesInfoResponse = await FetchSeriesInfoAsync(tmdbId, language, cancellationToken)
-                        .ConfigureAwait(false);
+                    seriesInfoResponse = await FetchSeriesInfoAsync(tmdbId, language, cancellationToken).ConfigureAwait(false);
 
                     if (seriesInfoResponse is null)
                     {
@@ -162,8 +160,7 @@ namespace StrmAssistant.Provider
             foreach (var season in seriesInfoResponse.seasons)
             {
                 var seasonInfoResponse =
-                    await FetchSeasonInfoAsync(tmdbId, season.season_number, language, cancellationToken)
-                        .ConfigureAwait(false);
+                    await FetchSeasonInfoAsync(tmdbId, season.season_number, language, cancellationToken).ConfigureAwait(false);
                 seasonResults.Add(seasonInfoResponse);
             }
 

@@ -29,7 +29,7 @@ namespace StrmAssistant.ScheduledTask
         {
             _logger.Info("BuildDoubanCache - Scheduled Task Execute");
 
-            await Task.Yield();
+            await Task.Delay(0).ConfigureAwait(false);
             progress.Report(0);
 
             var metadataEnhanceOptions = Plugin.Instance.MetadataEnhanceStore.GetOptions();
@@ -87,8 +87,7 @@ namespace StrmAssistant.ScheduledTask
 
                             if (string.IsNullOrWhiteSpace(doubanId))
                             {
-                                doubanId = await Plugin.DoubanApi.FindDoubanId(taskItem, cancellationToken)
-                                    .ConfigureAwait(false);
+                                doubanId = await Plugin.DoubanApi.FindDoubanId(taskItem, cancellationToken).ConfigureAwait(false);
 
                                 if (!string.IsNullOrWhiteSpace(doubanId))
                                 {
@@ -99,8 +98,7 @@ namespace StrmAssistant.ScheduledTask
 
                             if (!string.IsNullOrWhiteSpace(doubanId))
                             {
-                                var detail = await Plugin.DoubanApi.GetDoubanDetail(doubanId, cancellationToken)
-                                    .ConfigureAwait(false);
+                                var detail = await Plugin.DoubanApi.GetDoubanDetail(doubanId, cancellationToken).ConfigureAwait(false);
 
                                 if (detail?.Rating != null && detail.Rating.Value > 0)
                                 {
@@ -135,7 +133,7 @@ namespace StrmAssistant.ScheduledTask
                             var currentCount = Interlocked.Increment(ref current);
                             progress.Report(currentCount / total * 100);
                         }
-                    }, cancellationToken);
+                    });
                     tasks.Add(task);
 
                     if (tasks.Count >= 100)

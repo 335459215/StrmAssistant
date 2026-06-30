@@ -18,6 +18,12 @@ namespace StrmAssistant.Web.Service
         {
             var itemById = _libraryManager.GetItemById(request.ItemId);
 
+            if (itemById == null)
+            {
+                Plugin.Instance.Logger.Warn("LockItem - Item not found: {0}", request.ItemId);
+                return;
+            }
+
             var items = _libraryManager.GetItemList(new InternalItemsQuery
             {
                 PresentationUniqueKey = itemById.PresentationUniqueKey

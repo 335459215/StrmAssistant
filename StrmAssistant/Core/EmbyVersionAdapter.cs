@@ -12,7 +12,7 @@ namespace StrmAssistant.Core
     /// </summary>
     public class EmbyVersionAdapter
     {
-        private static EmbyVersionAdapter _instance;
+        private static volatile EmbyVersionAdapter _instance;
         private static readonly object _lock = new object();
         
         private readonly ILogger _logger;
@@ -290,7 +290,7 @@ namespace StrmAssistant.Core
                     }
                 }
             }
-            catch
+            catch (Exception)
             {
                 // FastReflection不可用，回退到标准反射
             }

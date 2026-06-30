@@ -37,14 +37,11 @@ namespace StrmAssistant.Mod
             var embyServerImplementationsAssembly = Assembly.Load("Emby.Server.Implementations");
             var dtoService =
                 embyServerImplementationsAssembly.GetType("Emby.Server.Implementations.Dto.DtoService");
-            _getBaseItemDtos = dtoService.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .Where(m => m.Name == "GetBaseItemDtos").OrderByDescending(m => m.GetParameters().Length)
-                .FirstOrDefault();
-            _getBaseItemDto = dtoService.GetMethod("GetBaseItemDto", BindingFlags.Public | BindingFlags.Instance,
-                null, new[] { typeof(BaseItem), typeof(DtoOptions), typeof(User) }, null);
+            _getBaseItemDtos = SafeGetMethod(dtoService, "GetBaseItemDtos", BindingFlags.Public | BindingFlags.Instance);
+            _getBaseItemDto = SafeGetMethod(dtoService, "GetBaseItemDto", BindingFlags.Public | BindingFlags.Instance, 3);
 
             _getMainExpression =
-                typeof(NamingOptions).GetMethod("GetMainExpression", BindingFlags.NonPublic | BindingFlags.Static);
+                SafeGetMethod(typeof(NamingOptions), "GetMainExpression", BindingFlags.NonPublic | BindingFlags.Static);
         }
 
         protected override void Prepare(bool apply)

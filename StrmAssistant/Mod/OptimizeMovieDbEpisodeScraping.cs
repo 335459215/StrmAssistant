@@ -75,8 +75,8 @@ namespace StrmAssistant.Mod
                 return true;
             }
 
-            var outcome = Task.Run(() => GetEpisodeMetadataFromSeasonAsync(options, cancellationToken), cancellationToken)
-                .Result;
+            var outcome = Task.Run(() => GetEpisodeMetadataFromSeasonAsync(options, cancellationToken))
+                .GetAwaiter().GetResult();
 
             if (outcome.Result != null)
             {
@@ -111,8 +111,8 @@ namespace StrmAssistant.Mod
                 return true;
             }
 
-            var outcome = Task.Run(() => GetEpisodeImagesFromSeasonAsync(options, cancellationToken), cancellationToken)
-                .Result;
+            var outcome = Task.Run(() => GetEpisodeImagesFromSeasonAsync(options, cancellationToken))
+                .GetAwaiter().GetResult();
 
             if (outcome.Result != null)
             {
@@ -164,8 +164,7 @@ namespace StrmAssistant.Mod
             }
 
             var seasonInfo = await FetchSeasonInfoAsync(tmdbId, episodeInfo.ParentIndexNumber.Value,
-                    episodeInfo.MetadataLanguage, cancellationToken)
-                .ConfigureAwait(false);
+                    episodeInfo.MetadataLanguage, cancellationToken).ConfigureAwait(false);
 
             var episodeResponse = seasonInfo?.episodes?
                 .FirstOrDefault(e => e.episode_number == episodeInfo.IndexNumber.Value);
@@ -218,8 +217,7 @@ namespace StrmAssistant.Mod
             if (string.IsNullOrEmpty(tmdbId)) return PrefixOutcome<IEnumerable<RemoteImageInfo>>.Passthrough;
 
             var seasonInfo = await FetchSeasonInfoAsync(tmdbId, episode.ParentIndexNumber.Value,
-                    episode.GetPreferredMetadataLanguage(), cancellationToken)
-                .ConfigureAwait(false);
+                    episode.GetPreferredMetadataLanguage(), cancellationToken).ConfigureAwait(false);
 
             var episodeResponse = seasonInfo?.episodes?
                 .FirstOrDefault(e => e.episode_number == episode.IndexNumber.Value);

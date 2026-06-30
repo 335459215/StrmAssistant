@@ -83,25 +83,25 @@ namespace StrmAssistant.Mod
             if (_movieDbAssembly != null)
             {
                 var movieDbProviderBase = _movieDbAssembly.GetType("MovieDb.MovieDbProviderBase");
-                _getMovieDbResponse = movieDbProviderBase.GetMethod("GetMovieDbResponse",
+                _getMovieDbResponse = SafeGetMethod(movieDbProviderBase, "GetMovieDbResponse",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 var apiKey = movieDbProviderBase.GetField("ApiKey", BindingFlags.Static | BindingFlags.NonPublic);
                 SystemDefaultMovieDbApiKey = apiKey?.GetValue(null) as string;
 
                 var embyProviders = Assembly.Load("Emby.Providers");
                 var providerManager = embyProviders.GetType("Emby.Providers.Manager.ProviderManager");
-                _saveImageFromRemoteUrl = providerManager.GetMethod("SaveImageFromRemoteUrl",
+                _saveImageFromRemoteUrl = SafeGetMethod(providerManager, "SaveImageFromRemoteUrl",
                     BindingFlags.NonPublic | BindingFlags.Instance);
 
                 var embyApi = Assembly.Load("Emby.Api");
                 var remoteImageService = embyApi.GetType("Emby.Api.Images.RemoteImageService");
-                _downloadImage = remoteImageService.GetMethod("DownloadImage",
+                _downloadImage = SafeGetMethod(remoteImageService, "DownloadImage",
                     BindingFlags.NonPublic | BindingFlags.Instance);
 
                 var embyServerImplementationsAssembly = Assembly.Load("Emby.Server.Implementations");
                 var applicationHost =
                     embyServerImplementationsAssembly.GetType("Emby.Server.Implementations.ApplicationHost");
-                _createHttpClientHandler = applicationHost.GetMethod("CreateHttpClientHandler",
+                _createHttpClientHandler = SafeGetMethod(applicationHost, "CreateHttpClientHandler",
                     BindingFlags.NonPublic | BindingFlags.Instance);
 
                 _httpClientRequestMethods = AppDomain.CurrentDomain

@@ -46,7 +46,7 @@ namespace StrmAssistant.Mod
             var embyServerImplementationsAssembly = Assembly.Load("Emby.Server.Implementations");
             var applicationHost =
                 embyServerImplementationsAssembly?.GetType("Emby.Server.Implementations.ApplicationHost");
-            _createHttpClientHandler = applicationHost?.GetMethod("CreateHttpClientHandler",
+            _createHttpClientHandler = SafeGetMethod(applicationHost, "CreateHttpClientHandler",
                 BindingFlags.NonPublic | BindingFlags.Instance);
         }
 

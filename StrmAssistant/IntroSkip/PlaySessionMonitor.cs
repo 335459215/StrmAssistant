@@ -7,6 +7,7 @@ using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Querying;
 using MediaBrowser.Model.Session;
 using StrmAssistant.Common;
+using StrmAssistant.Mod;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -35,9 +36,9 @@ namespace StrmAssistant.IntroSkip
 
         private static Task _introSkipProcessTask;
 
-        public static volatile List<string> LibraryPathsInScope = new List<string>();
+        public static volatile IReadOnlyList<string> LibraryPathsInScope = Array.Empty<string>();
         public static volatile User[] UsersInScope = Array.Empty<User>();
-        public static volatile HashSet<string> ClientsInScope = new HashSet<string>();
+        public static volatile IReadOnlySet<string> ClientsInScope = new HashSet<string>();
 
         public PlaySessionMonitor(ILibraryManager libraryManager, IUserManager userManager,
             ISessionManager sessionManager)
@@ -65,7 +66,7 @@ namespace StrmAssistant.IntroSkip
                 .Select(ls => ls.EndsWith(Path.DirectorySeparatorChar.ToString())
                     ? ls
                     : ls + Path.DirectorySeparatorChar)
-                .ToList();
+                .ToList().AsReadOnly();
         }
 
         public void UpdateLibraryPathsInScope()
@@ -390,7 +391,12 @@ namespace StrmAssistant.IntroSkip
                     }
                 }
 
-                var task = Task.Run(() =>
+                // Pre-register to prevent races, then launch the task
+                var tcs = new TaskCompletionSource<bool>();
+                _ongoingIntroUpdates[episodeId] = tcs.Task;
+                _lastIntroUpdateTimes[episodeId] = now;
+
+                Task.Run(() =>
                 {
                     try
                     {
@@ -404,14 +410,12 @@ namespace StrmAssistant.IntroSkip
                         _logger.Error("Error updating intro marker: {0}", e.Message);
                         _logger.Debug(e.StackTrace);
                     }
-                });
-
-                if (_ongoingIntroUpdates.TryAdd(episodeId, task))
-                {
-                    task.ContinueWith(t => { _ongoingIntroUpdates.TryRemove(episodeId, out _); },
-                        TaskContinuationOptions.ExecuteSynchronously);
-                    _lastIntroUpdateTimes[episodeId] = now;
-                }
+                    finally
+                    {
+                        tcs.TrySetResult(true);
+                        _ongoingIntroUpdates.TryRemove(episodeId, out _);
+                    }
+                }).ContinueWith(t => { if (t.IsFaulted) ThreadLogHelper.Log("Error", $"UpdateIntroTask unobserved fault: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
             }
         }
 
@@ -436,7 +440,12 @@ namespace StrmAssistant.IntroSkip
                     }
                 }
 
-                var task = Task.Run(() =>
+                // Pre-register to prevent races, then launch the task
+                var tcs = new TaskCompletionSource<bool>();
+                _ongoingCreditsUpdates[episodeId] = tcs.Task;
+                _lastCreditsUpdateTimes[episodeId] = now;
+
+                Task.Run(() =>
                 {
                     try
                     {
@@ -448,14 +457,12 @@ namespace StrmAssistant.IntroSkip
                         _logger.Error("Error updating credits marker: {0}", e.Message);
                         _logger.Debug(e.StackTrace);
                     }
-                });
-
-                if (_ongoingCreditsUpdates.TryAdd(episodeId, task))
-                {
-                    task.ContinueWith(t => { _ongoingCreditsUpdates.TryRemove(episodeId, out _); },
-                        TaskContinuationOptions.ExecuteSynchronously);
-                    _lastCreditsUpdateTimes[episodeId] = now;
-                }
+                    finally
+                    {
+                        tcs.TrySetResult(true);
+                        _ongoingCreditsUpdates.TryRemove(episodeId, out _);
+                    }
+                }).ContinueWith(t => { if (t.IsFaulted) ThreadLogHelper.Log("Error", $"UpdateCreditsTask unobserved fault: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
             }
         }
 
@@ -487,12 +494,10 @@ namespace StrmAssistant.IntroSkip
             _lastIntroUpdateTimes.Clear();
             _lastCreditsUpdateTimes.Clear();
 
-            if (QueueManager.IntroSkipTokenSource != null)
-            {
-                QueueManager.IntroSkipTokenSource.Cancel();
-                QueueManager.IntroSkipTokenSource.Dispose();
-                QueueManager.IntroSkipTokenSource = null;
-            }
+            // Best-effort cancel — QueueManager.Dispose() will also clean this up.
+            // Guard against ObjectDisposedException if QueueManager already disposed it.
+            try { QueueManager.IntroSkipTokenSource?.Cancel(); }
+            catch (ObjectDisposedException) { /* already disposed by QueueManager */ }
         }
     }
 }

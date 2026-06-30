@@ -44,7 +44,7 @@ namespace StrmAssistant.Common
         private readonly MethodInfo _updateSequencesForSeason;
         private readonly FieldInfo _timeoutMs;
 
-        public static volatile List<string> LibraryPathsInScope = new List<string>();
+        public static volatile IReadOnlyList<string> LibraryPathsInScope = Array.Empty<string>();
 
         public FingerprintApi(ILibraryManager libraryManager, IFileSystem fileSystem,
             IApplicationPaths applicationPaths, IFfmpegManager ffmpegManager, IMediaEncoder mediaEncoder,
@@ -98,8 +98,8 @@ namespace StrmAssistant.Common
                             new[] { typeof(Episode), typeof(CancellationToken) }
                         );
                         
-                        _getAllFingerprintFilesForSeason = audioFingerprintManager.GetMethod("GetAllFingerprintFilesForSeason",
-                            BindingFlags.Public | BindingFlags.Instance);
+                        _getAllFingerprintFilesForSeason = audioFingerprintManager.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                            .FirstOrDefault(m => m.Name == "GetAllFingerprintFilesForSeason");
                         
                         // 尝试查找 UpdateSequencesForSeason，可能有不同的参数签名
                         var updateMethods = audioFingerprintManager.GetMethods(BindingFlags.Public | BindingFlags.Instance)
@@ -336,7 +336,7 @@ namespace StrmAssistant.Common
                 .Select(ls => ls.EndsWith(Path.DirectorySeparatorChar.ToString())
                     ? ls
                     : ls + Path.DirectorySeparatorChar)
-                .ToList();
+                .ToList().AsReadOnly(); // 返回 IReadOnlyList，原子引用替换
         }
 
         public void UpdateLibraryPathsInScope()
@@ -615,6 +615,12 @@ namespace StrmAssistant.Common
                 allEpisodes, libraryOptions, directoryService, cancellationToken).ConfigureAwait(false);
 
             double total = episodesWithoutMarkers.Count;
+            if (total == 0)
+            {
+                progress?.Report(1.0);
+                return;
+            }
+
             var index = 0;
 
             foreach (var episode in episodesWithoutMarkers)

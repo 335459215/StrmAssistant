@@ -28,7 +28,7 @@ namespace StrmAssistant.ScheduledTask
             _logger.Info("Tier2 Max Concurrent Count: " +
                          Plugin.Instance.MainOptionsStore.GetOptions().GeneralOptions.Tier2MaxConcurrentCount);
 
-            await Task.Yield();
+            await Task.Delay(0).ConfigureAwait(false);
             progress.Report(0);
 
             var items = Plugin.LibraryApi.FetchPostExtractTaskItems(false);
@@ -36,7 +36,7 @@ namespace StrmAssistant.ScheduledTask
 
             var directoryService = new DirectoryService(_logger, _fileSystem);
 
-            double total = items.Count;
+            double total = items.Count > 0 ? items.Count : 1;
             var index = 0;
             var current = 0;
             var skip = 0;
@@ -97,7 +97,7 @@ namespace StrmAssistant.ScheduledTask
                             var currentCount = Interlocked.Increment(ref current);
                             progress.Report(currentCount / total * 100);
                         }
-                    }, cancellationToken);
+                    });
                     tasks.Add(task);
 
                     // 周期性剔除已完成 task，释放它们捕获的 BaseItem 闭包

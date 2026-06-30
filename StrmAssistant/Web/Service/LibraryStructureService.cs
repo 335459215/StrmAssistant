@@ -23,7 +23,20 @@ namespace StrmAssistant.Web.Service
 
         public void Post(CopyVirtualFolder request)
         {
+            if (string.IsNullOrEmpty(request.Id))
+            {
+                _logger.Warn("CopyVirtualFolder - Id is required");
+                return;
+            }
+
             var sourceLibrary = _libraryManager.GetItemById(request.Id);
+
+            if (sourceLibrary == null)
+            {
+                _logger.Warn("CopyVirtualFolder - Item not found: {0}", request.Id);
+                return;
+            }
+
             var sourceOptions = _libraryManager.GetLibraryOptions(sourceLibrary);
 
             var targetOptions = LibraryApi.CopyLibraryOptions(sourceOptions);

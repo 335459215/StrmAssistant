@@ -62,8 +62,8 @@ namespace StrmAssistant.ScheduledTask
             var groupedBySeason = episodes.GroupBy(e => e.Season).ToList();
             var seasonTasks = new List<Task>();
 
-            double totalSeasons = groupedBySeason.Count;
-            double totalEpisodes = episodes.Count;
+            double totalSeasons = groupedBySeason.Count > 0 ? groupedBySeason.Count : 1;
+            double totalEpisodes = episodes.Count > 0 ? episodes.Count : 1;
 
             _logger.Info($"IntroFingerprintExtract - Number of seasons: {totalSeasons}");
             _logger.Info($"IntroFingerprintExtract - Number of episodes: {totalEpisodes}");
@@ -186,10 +186,9 @@ namespace StrmAssistant.ScheduledTask
                             {
                                 try
                                 {
-                                    await Task.Delay(cooldownSeconds.Value * 1000, cancellationToken)
-                                        .ConfigureAwait(false);
+                                    await Task.Delay(cooldownSeconds.Value * 1000, cancellationToken).ConfigureAwait(false);
                                 }
-                                catch
+                                catch (Exception)
                                 {
                                     // ignored
                                 }
@@ -211,7 +210,7 @@ namespace StrmAssistant.ScheduledTask
                                     $"IntroFingerprintExtract - Episode Progress {currentCount}/{totalEpisodes} - Task {taskEpisodeIndex}: {taskEpisode.Path}");
                             }
                         }
-                    }, cancellationToken);
+                    });
                     episodeTasks.Add(task);
 
                     if (episodeTasks.Count >= 100)
@@ -307,7 +306,7 @@ namespace StrmAssistant.ScheduledTask
                                 $"IntroFingerprintExtract - Season Progress {currentCount}/{totalSeasons} - Task {taskSeasonIndex}: {taskSeason.Path}");
                         }
                     }
-                }, cancellationToken);
+                });
                 seasonTasks.Add(seasonTask);
 
                 if (seasonTasks.Count >= 50)
@@ -371,6 +370,7 @@ namespace StrmAssistant.ScheduledTask
         public bool IsEnabled => true;
         public bool IsLogged => true;
 
-        public static bool IsRunning { get; private set; }
+        private static volatile bool _isRunning;
+        public static bool IsRunning { get => _isRunning; private set => _isRunning = value; }
     }
 }

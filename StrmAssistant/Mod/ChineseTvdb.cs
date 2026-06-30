@@ -43,25 +43,25 @@ namespace StrmAssistant.Mod
             if (_tvdbAssembly != null)
             {
                 var entryPoint = _tvdbAssembly.GetType("Tvdb.EntryPoint");
-                _convertToTvdbLanguages = entryPoint.GetMethod("ConvertToTvdbLanguages",
-                    BindingFlags.Instance | BindingFlags.Public, null, new[] { typeof(ItemLookupInfo) }, null);
+                _convertToTvdbLanguages = SafeGetMethod(entryPoint, "ConvertToTvdbLanguages",
+                    BindingFlags.Instance | BindingFlags.Public, 1);
                 var translations = _tvdbAssembly.GetType("Tvdb.Translations");
                 _getTranslation =
-                    translations.GetMethod("GetTranslation", BindingFlags.Instance | BindingFlags.NonPublic);
+                    SafeGetMethod(translations, "GetTranslation", BindingFlags.Instance | BindingFlags.NonPublic);
                 var tvdbMovieProvider = _tvdbAssembly.GetType("Tvdb.TvdbMovieProvider");
-                _addMovieInfo = tvdbMovieProvider.GetMethod("AddMovieInfo",
+                _addMovieInfo = SafeGetMethod(tvdbMovieProvider, "AddMovieInfo",
                     BindingFlags.Instance | BindingFlags.NonPublic);
                 var tvdbSeriesProvider = _tvdbAssembly.GetType("Tvdb.TvdbSeriesProvider");
-                _addSeriesInfo = tvdbSeriesProvider.GetMethod("AddSeriesInfo",
+                _addSeriesInfo = SafeGetMethod(tvdbSeriesProvider, "AddSeriesInfo",
                     BindingFlags.Instance | BindingFlags.NonPublic);
                 var tvdbSeasonProvider= _tvdbAssembly.GetType("Tvdb.TvdbSeasonProvider");
                 _getTvdbSeason =
-                    tvdbSeasonProvider.GetMethod("GetTvdbSeason", BindingFlags.Instance | BindingFlags.Public);
+                    SafeGetMethod(tvdbSeasonProvider, "GetTvdbSeason", BindingFlags.Instance | BindingFlags.Public);
                 var tvdbEpisodeProvider = _tvdbAssembly.GetType("Tvdb.TvdbEpisodeProvider");
-                _findEpisode = tvdbEpisodeProvider.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
-                    .FirstOrDefault(m => m.Name == "FindEpisode" && m.GetParameters().Length == 3);
+                _findEpisode = SafeGetMethod(tvdbEpisodeProvider, "FindEpisode",
+                    BindingFlags.NonPublic | BindingFlags.Instance, 3);
                 _getEpisodeData =
-                    tvdbEpisodeProvider.GetMethod("GetEpisodeData", BindingFlags.Instance | BindingFlags.Public);
+                    SafeGetMethod(tvdbEpisodeProvider, "GetEpisodeData", BindingFlags.Instance | BindingFlags.Public);
             }
             else
             {
@@ -289,7 +289,7 @@ namespace StrmAssistant.Mod
             {
                 tvdbSeason = Traverse.Create(__result).Property("Result")?.GetValue();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }
@@ -358,7 +358,7 @@ namespace StrmAssistant.Mod
                 var taskResult = Traverse.Create(__result).Property("Result")?.GetValue();
                 tvdbEpisode = Traverse.Create(taskResult)?.Property("Item1")?.GetValue();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }

@@ -67,8 +67,7 @@ namespace StrmAssistant.Common
                 await ThrottleRequest(cancellationToken).ConfigureAwait(false);
 
                 var url = string.Format(DetailApiUrl, doubanId);
-                var response = await FetchJsonAsync<DoubanDetailResponse>(url, cancellationToken)
-                    .ConfigureAwait(false);
+                var response = await FetchJsonAsync<DoubanDetailResponse>(url, cancellationToken).ConfigureAwait(false);
 
                 if (response != null)
                 {
@@ -100,8 +99,7 @@ namespace StrmAssistant.Common
                 await ThrottleRequest(cancellationToken).ConfigureAwait(false);
 
                 var url = string.Format(SeasonsApiUrl, doubanId);
-                var response = await FetchJsonAsync<DoubanSeasonsResponse>(url, cancellationToken)
-                    .ConfigureAwait(false);
+                var response = await FetchJsonAsync<DoubanSeasonsResponse>(url, cancellationToken).ConfigureAwait(false);
 
                 if (response != null)
                 {
@@ -133,8 +131,7 @@ namespace StrmAssistant.Common
                 await ThrottleRequest(cancellationToken).ConfigureAwait(false);
 
                 var url = string.Format(CelebrityApiUrl, doubanId);
-                var response = await FetchJsonAsync<DoubanCelebrityResponse>(url, cancellationToken)
-                    .ConfigureAwait(false);
+                var response = await FetchJsonAsync<DoubanCelebrityResponse>(url, cancellationToken).ConfigureAwait(false);
 
                 if (response != null)
                 {
@@ -160,8 +157,7 @@ namespace StrmAssistant.Common
                 await ThrottleRequest(cancellationToken).ConfigureAwait(false);
 
                 var url = string.Format(SearchApiUrl, Uri.EscapeDataString(query));
-                return await FetchJsonAsync<DoubanAbstractResponse>(url, cancellationToken)
-                    .ConfigureAwait(false);
+                return await FetchJsonAsync<DoubanAbstractResponse>(url, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

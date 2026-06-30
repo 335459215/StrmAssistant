@@ -86,7 +86,7 @@ namespace StrmAssistant.Common
                     BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
                 return members.Length > 0;
             }
-            catch
+            catch (Exception)
             {
                 return false;
             }

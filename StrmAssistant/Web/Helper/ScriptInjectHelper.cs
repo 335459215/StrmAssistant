@@ -1,4 +1,5 @@
 using MediaBrowser.Controller.Configuration;
+using StrmAssistant.Mod;
 using StrmAssistant.Options;
 using System;
 using System.IO;
@@ -211,8 +212,9 @@ namespace StrmAssistant.Web.Helper
                 return metaOptions.EnableDoubanAssistScraping &&
                        metaOptions.DoubanAssistScrapeScope.Contains(MetadataEnhanceOptions.DoubanAssistScrapeOption.Rating.ToString());
             }
-            catch
+            catch (Exception)
             {
+                ThreadLogHelper.Log("WARN", "IsDoubanRatingEnabled - Failed to read config");
                 return false;
             }
         }
@@ -223,8 +225,9 @@ namespace StrmAssistant.Web.Helper
             {
                 return Plugin.Instance.ExperienceEnhanceStore.GetOptions().UIFunctionOptions;
             }
-            catch
+            catch (Exception)
             {
+                ThreadLogHelper.Log("WARN", "GetUIFunctionOptions - Failed to read config");
                 return new UIFunctionOptions();
             }
         }
@@ -235,8 +238,9 @@ namespace StrmAssistant.Web.Helper
             {
                 return Plugin.Instance.MetadataEnhanceStore.GetOptions().EnableDoubanAssistScraping;
             }
-            catch
+            catch (Exception)
             {
+                ThreadLogHelper.Log("WARN", "IsDoubanAssistEnabled - Failed to read config");
                 return false;
             }
         }
@@ -421,14 +425,17 @@ namespace StrmAssistant.Web.Helper
 
         private static string InjectIndicatorsCode(UIFunctionOptions uiOptions)
         {
-            var injectCode = @"
+            // 对用户输入进行 JS 转义，防止 XSS
+            var escapedPreference = (uiOptions.HidePersonNoImage ? uiOptions.HidePersonPreference : "")
+                .Replace("\\", "\\\\").Replace("'", "\\'").Replace("\"", "\\\"").Replace("<", "\\x3c").Replace(">", "\\x3e");
 
+            var injectCode = @"
 /* StrmAssistant: Indicators enhancement */
 (function() {
     function enhanceIndicators() {
         // HidePersonNoImage: filter out persons without images
         var hidePersonNoImage = " + (uiOptions.HidePersonNoImage ? "true" : "false") + @";
-        var hidePersonPreference = '" + (uiOptions.HidePersonNoImage ? uiOptions.HidePersonPreference : "") + @"';
+        var hidePersonPreference = '" + escapedPreference + @"';
         
         if (hidePersonNoImage && typeof Emby !== 'undefined' && Emby.Indicators) {
             var origGetIndicatorHtml = Emby.Indicators.getIndicatorHtml;

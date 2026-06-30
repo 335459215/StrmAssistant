@@ -74,7 +74,7 @@ namespace StrmAssistant.ScheduledTask
 
         public async Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
         {
-            await Task.Yield();
+            await Task.Delay(0).ConfigureAwait(false);
             progress.Report(0);
 
             try
@@ -129,16 +129,14 @@ namespace StrmAssistant.ScheduledTask
                                                  ? $"token {githubToken}"
                                                  : null
                                          }
-                                     })
-                                     .ConfigureAwait(false))
+                                     }).ConfigureAwait(false))
                     {
                         var dllFilePath = Path.Combine(_applicationPaths.PluginsPath, PluginAssemblyFilename);
 
                         await using (var fileStream =
                                      new FileStream(dllFilePath, FileMode.Create, FileAccess.Write))
                         {
-                            await responseStream.CopyToAsync(fileStream, 81920, cancellationToken)
-                                .ConfigureAwait(false);
+                            await responseStream.CopyToAsync(fileStream, 81920, cancellationToken).ConfigureAwait(false);
                         }
                     }
 

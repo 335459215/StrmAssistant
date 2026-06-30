@@ -139,7 +139,8 @@ namespace StrmAssistant.Common
                     if (ffProbeSubtitleInfoConstructor != null)
                     {
                         _ffProbeSubtitleInfo = ffProbeSubtitleInfoConstructor.Invoke(new object[] { mediaProbeManager });
-                        _updateExternalSubtitleStream = ffProbeSubtitleInfoType.GetMethod("UpdateExternalSubtitleStream");
+                        _updateExternalSubtitleStream = ffProbeSubtitleInfoType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                            .FirstOrDefault(m => m.Name == "UpdateExternalSubtitleStream");
                         
                         if (Plugin.Instance.DebugMode && _updateExternalSubtitleStream != null)
                         {
@@ -402,7 +403,7 @@ namespace StrmAssistant.Common
 
                 return !currentSet.SetEquals(newSet);
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }
@@ -444,7 +445,8 @@ namespace StrmAssistant.Common
                 if (persistMediaInfo && Plugin.LibraryApi.IsLibraryInScope(item))
                 {
                     _ = Plugin.MediaInfoApi.SerializeMediaInfo(item.InternalId, directoryService, true,
-                        "External Subtitle Update").ConfigureAwait(false);
+                        "External Subtitle Update")
+                        .ContinueWith(t => { if (t.IsFaulted) ThreadLogHelper.Log("Error", $"SubtitleApi SerializeMediaInfo failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
                 }
             }
         }

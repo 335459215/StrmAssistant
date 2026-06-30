@@ -12,7 +12,7 @@ namespace StrmAssistant.Core
     /// </summary>
     public class FastReflection
     {
-        private static FastReflection _instance;
+        private static volatile FastReflection _instance;
         private static readonly object _lock = new object();
         
         private readonly ILogger _logger;

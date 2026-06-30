@@ -2,6 +2,7 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.Logging;
 using StrmAssistant.Core;
+using StrmAssistant.Mod;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -39,8 +40,10 @@ namespace StrmAssistant.Common
         public static Task FingerprintProcessTask;
         public static Task EpisodeRefreshProcessTask;
 
-        public static bool IsMediaInfoProcessTaskRunning { get; private set; }
-        public static bool IsEpisodeRefreshProcessTaskRunning { get; private set; }
+        private static volatile bool _isMediaInfoProcessTaskRunning;
+        public static bool IsMediaInfoProcessTaskRunning { get => _isMediaInfoProcessTaskRunning; private set => _isMediaInfoProcessTaskRunning = value; }
+        private static volatile bool _isEpisodeRefreshProcessTaskRunning;
+        public static bool IsEpisodeRefreshProcessTaskRunning { get => _isEpisodeRefreshProcessTaskRunning; private set => _isEpisodeRefreshProcessTaskRunning = value; }
 
         static QueueManager()
         {
@@ -62,16 +65,16 @@ namespace StrmAssistant.Common
                     {
                         if (task.IsFaulted)
                         {
-                            Logger.Debug(
+                            ThreadLogHelper.Log("Debug",
                                 $"(Trace) MediaInfo_ProcessItemQueueAsync terminated unexpectedly. Exception: {task.Exception?.Flatten()}");
                         }
                         else if (task.IsCanceled)
                         {
-                            Logger.Debug("(Trace) MediaInfo_ProcessItemQueueAsync was canceled.");
+                            ThreadLogHelper.Log("Debug", "(Trace) MediaInfo_ProcessItemQueueAsync was canceled.");
                         }
                         else
                         {
-                            Logger.Debug("(Trace) MediaInfo_ProcessItemQueueAsync completed successfully.");
+                            ThreadLogHelper.Log("Debug", "(Trace) MediaInfo_ProcessItemQueueAsync completed successfully.");
                         }
 
                         MediaInfoProcessTask = null;
@@ -86,16 +89,16 @@ namespace StrmAssistant.Common
                     {
                         if (task.IsFaulted)
                         {
-                            Logger.Debug(
+                            ThreadLogHelper.Log("Debug",
                                 $"(Trace) Fingerprint_ProcessItemQueueAsync terminated unexpectedly. Exception: {task.Exception?.Flatten()}");
                         }
                         else if (task.IsCanceled)
                         {
-                            Logger.Debug("(Trace) Fingerprint_ProcessItemQueueAsync was canceled.");
+                            ThreadLogHelper.Log("Debug", "(Trace) Fingerprint_ProcessItemQueueAsync was canceled.");
                         }
                         else
                         {
-                            Logger.Debug("(Trace) Fingerprint_ProcessItemQueueAsync completed successfully.");
+                            ThreadLogHelper.Log("Debug", "(Trace) Fingerprint_ProcessItemQueueAsync completed successfully.");
                         }
 
                         FingerprintProcessTask = null;
@@ -110,16 +113,16 @@ namespace StrmAssistant.Common
                     {
                         if (task.IsFaulted)
                         {
-                            Logger.Debug(
+                            ThreadLogHelper.Log("Debug",
                                 $"(Trace) EpisodeRefresh_ProcessItemQueueAsync terminated unexpectedly. Exception: {task.Exception?.Flatten()}");
                         }
                         else if (task.IsCanceled)
                         {
-                            Logger.Debug("(Trace) EpisodeRefresh_ProcessItemQueueAsync was canceled.");
+                            ThreadLogHelper.Log("Debug", "(Trace) EpisodeRefresh_ProcessItemQueueAsync was canceled.");
                         }
                         else
                         {
-                            Logger.Debug("(Trace) EpisodeRefresh_ProcessItemQueueAsync completed successfully.");
+                            ThreadLogHelper.Log("Debug", "(Trace) EpisodeRefresh_ProcessItemQueueAsync completed successfully.");
                         }
 
                         EpisodeRefreshProcessTask = null;
@@ -132,8 +135,11 @@ namespace StrmAssistant.Common
             if (_currentMasterMaxConcurrentCount != maxConcurrentCount)
             {
                 _currentMasterMaxConcurrentCount = maxConcurrentCount;
-                var oldSemaphore = Interlocked.Exchange(ref MasterSemaphore, new SemaphoreSlim(maxConcurrentCount));
-                oldSemaphore?.Dispose();
+                // Atomically swap to the new semaphore.
+                // Do NOT Dispose the old one — concurrent workers may still hold
+                // references via WaitAsync/Release. The GC will reclaim it once
+                // all outstanding references go out of scope.
+                Interlocked.Exchange(ref MasterSemaphore, new SemaphoreSlim(maxConcurrentCount));
             }
         }
 
@@ -142,8 +148,8 @@ namespace StrmAssistant.Common
             if (_currentTier2MaxConcurrentCount != maxConcurrentCount)
             {
                 _currentTier2MaxConcurrentCount = maxConcurrentCount;
-                var oldSemaphore = Interlocked.Exchange(ref Tier2Semaphore, new SemaphoreSlim(maxConcurrentCount));
-                oldSemaphore?.Dispose();
+                // Same rationale as UpdateMasterSemaphore — do not Dispose the old instance.
+                Interlocked.Exchange(ref Tier2Semaphore, new SemaphoreSlim(maxConcurrentCount));
             }
         }
 
@@ -151,6 +157,8 @@ namespace StrmAssistant.Common
         {
             Logger.Info("MediaInfo - ProcessItemQueueAsync Started");
 
+            MediaInfoTokenSource?.Cancel();
+            MediaInfoTokenSource?.Dispose();
             MediaInfoTokenSource = new CancellationTokenSource();
             var cancellationToken = MediaInfoTokenSource.Token;
 
@@ -168,7 +176,7 @@ namespace StrmAssistant.Common
                     {
                         await Task.Delay(remainingTime, cancellationToken).ConfigureAwait(false);
                     }
-                    catch
+                    catch (Exception)
                     {
                         break;
                     }
@@ -225,7 +233,7 @@ namespace StrmAssistant.Common
                             {
                                 await MasterSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
                             }
-                            catch
+                            catch (Exception)
                             {
                                 break;
                             }
@@ -278,10 +286,9 @@ namespace StrmAssistant.Common
                                 }
                                 catch (Exception e)
                                 {
-                                    Logger.Error("MediaInfoExtract - Item failed: " + taskItem.Name + " - " +
-                                                 taskItem.Path);
-                                    Logger.Error(e.Message);
-                                    Logger.Debug(e.StackTrace);
+                                    ThreadLogHelper.Log("Error", $"MediaInfoExtract - Item failed: {taskItem.Name} - {taskItem.Path}");
+                                    ThreadLogHelper.Log("Error", e.Message);
+                                    ThreadLogHelper.Log("Debug", e.StackTrace);
                                 }
                                 finally
                                 {
@@ -289,10 +296,9 @@ namespace StrmAssistant.Common
                                     {
                                         try
                                         {
-                                            await Task.Delay(cooldownSeconds.Value * 1000, cancellationToken)
-                                                .ConfigureAwait(false);
+                                            await Task.Delay(cooldownSeconds.Value * 1000, cancellationToken).ConfigureAwait(false);
                                         }
-                                        catch
+                                        catch (Exception)
                                         {
                                             // ignored
                                         }
@@ -359,6 +365,8 @@ namespace StrmAssistant.Common
         {
             Logger.Info("Fingerprint - ProcessItemQueueAsync Started");
 
+            FingerprintTokenSource?.Cancel();
+            FingerprintTokenSource?.Dispose();
             FingerprintTokenSource = new CancellationTokenSource();
             var cancellationToken = FingerprintTokenSource.Token;
 
@@ -375,7 +383,7 @@ namespace StrmAssistant.Common
                     {
                         await Task.Delay(remainingTime, cancellationToken).ConfigureAwait(false);
                     }
-                    catch
+                    catch (Exception)
                     {
                         break;
                     }
@@ -456,7 +464,7 @@ namespace StrmAssistant.Common
                                 {
                                     await MasterSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
                                 }
-                                catch
+                                catch (Exception)
                                 {
                                     break;
                                 }
@@ -484,8 +492,7 @@ namespace StrmAssistant.Common
                                         if (Plugin.LibraryApi.IsExtractNeeded(taskItem, enableImageCapture))
                                         {
                                             result1 = await Plugin.LibraryApi.OrchestrateMediaInfoProcessAsync(taskItem,
-                                                    "IntroFingerprintExtract Catchup", cancellationToken)
-                                                .ConfigureAwait(false);
+                                                    "IntroFingerprintExtract Catchup", cancellationToken).ConfigureAwait(false);
 
                                             if (result1 is null)
                                             {
@@ -517,10 +524,9 @@ namespace StrmAssistant.Common
                                     }
                                     catch (Exception e)
                                     {
-                                        Logger.Error("IntroFingerprintExtract - Episode failed: " + taskItem.Name +
-                                                     " - " + taskItem.Path);
-                                        Logger.Error(e.Message);
-                                        Logger.Debug(e.StackTrace);
+                                        ThreadLogHelper.Log("Error", $"IntroFingerprintExtract - Episode failed: {taskItem.Name} - {taskItem.Path}");
+                                        ThreadLogHelper.Log("Error", e.Message);
+                                        ThreadLogHelper.Log("Debug", e.StackTrace);
                                     }
                                     finally
                                     {
@@ -528,10 +534,9 @@ namespace StrmAssistant.Common
                                         {
                                             try
                                             {
-                                                await Task.Delay(cooldownSeconds.Value * 1000, cancellationToken)
-                                                    .ConfigureAwait(false);
+                                                await Task.Delay(cooldownSeconds.Value * 1000, cancellationToken).ConfigureAwait(false);
                                             }
-                                            catch
+                                            catch (Exception)
                                             {
                                                 // ignored
                                             }
@@ -567,7 +572,7 @@ namespace StrmAssistant.Common
                                     {
                                         await Tier2Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
                                     }
-                                    catch
+                                    catch (Exception)
                                     {
                                         return;
                                     }
@@ -593,10 +598,9 @@ namespace StrmAssistant.Common
                                     }
                                     catch (Exception e)
                                     {
-                                        Logger.Error("IntroFingerprintExtract - Season failed: " + taskSeason.Name +
-                                                     " - " + taskSeason.Path);
-                                        Logger.Error(e.Message);
-                                        Logger.Debug(e.StackTrace);
+                                        ThreadLogHelper.Log("Error", $"IntroFingerprintExtract - Season failed: {taskSeason.Name} - {taskSeason.Path}");
+                                        ThreadLogHelper.Log("Error", e.Message);
+                                        ThreadLogHelper.Log("Debug", e.StackTrace);
                                     }
                                     finally
                                     {
@@ -653,6 +657,8 @@ namespace StrmAssistant.Common
         {
             Logger.Info("IntroSkip - ProcessItemQueueAsync Started");
 
+            IntroSkipTokenSource?.Cancel();
+            IntroSkipTokenSource?.Dispose();
             IntroSkipTokenSource = new CancellationTokenSource();
             var cancellationToken = IntroSkipTokenSource.Token;
 
@@ -668,7 +674,7 @@ namespace StrmAssistant.Common
                     {
                         await Task.Delay(remainingTime, cancellationToken).ConfigureAwait(false);
                     }
-                    catch
+                    catch (Exception)
                     {
                         break;
                     }
@@ -708,6 +714,8 @@ namespace StrmAssistant.Common
         {
             Logger.Info("EpisodeRefresh - ProcessItemQueueAsync Started");
 
+            EpisodeRefreshTokenSource?.Cancel();
+            EpisodeRefreshTokenSource?.Dispose();
             EpisodeRefreshTokenSource = new CancellationTokenSource();
             var cancellationToken = EpisodeRefreshTokenSource.Token;
 
@@ -724,7 +732,7 @@ namespace StrmAssistant.Common
                     {
                         await Task.Delay(remainingTime, cancellationToken).ConfigureAwait(false);
                     }
-                    catch
+                    catch (Exception)
                     {
                         break;
                     }
@@ -760,7 +768,7 @@ namespace StrmAssistant.Common
                             {
                                 await Tier2Semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
                             }
-                            catch
+                            catch (Exception)
                             {
                                 break;
                             }
@@ -780,8 +788,7 @@ namespace StrmAssistant.Common
                                     await Task.Delay(
                                             Random.Shared.Next(0,
                                                 Math.Max(0, tier2MaxConcurrentCount - Tier2Semaphore.CurrentCount) *
-                                                MetadataApi.RequestIntervalMs), cancellationToken)
-                                        .ConfigureAwait(false);
+                                                MetadataApi.RequestIntervalMs), cancellationToken).ConfigureAwait(false);
 
                                     if (cancellationToken.IsCancellationRequested)
                                     {
@@ -793,8 +800,7 @@ namespace StrmAssistant.Common
                                     EnableItemExclusiveFeatures(taskItem.InternalId, ExclusiveControl.CatchAllBlock,
                                         ExclusiveControl.IgnoreExtSubChange);
 
-                                    await Plugin.LibraryApi.RefreshEpisodeMetadata(taskItem, cancellationToken)
-                                        .ConfigureAwait(false);
+                                    await Plugin.LibraryApi.RefreshEpisodeMetadata(taskItem, cancellationToken).ConfigureAwait(false);
 
                                     Logger.Info("EpisodeRefresh - Item processed: " + taskItem.Name + " - " +
                                                 taskItem.Path);
@@ -806,10 +812,9 @@ namespace StrmAssistant.Common
                                 }
                                 catch (Exception e)
                                 {
-                                    Logger.Error("EpisodeRefresh - Item failed: " + taskItem.Name + " - " +
-                                                 taskItem.Path);
-                                    Logger.Error(e.Message);
-                                    Logger.Debug(e.StackTrace);
+                                    ThreadLogHelper.Log("Error", $"EpisodeRefresh - Item failed: {taskItem.Name} - {taskItem.Path}");
+                                    ThreadLogHelper.Log("Error", e.Message);
+                                    ThreadLogHelper.Log("Debug", e.StackTrace);
                                 }
                                 finally
                                 {

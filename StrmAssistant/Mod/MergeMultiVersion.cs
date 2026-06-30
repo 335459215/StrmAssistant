@@ -50,7 +50,7 @@ namespace StrmAssistant.Mod
                     var videoListResolverType = EmbyVersionAdapter.Instance.TryGetType(namingAssembly.GetName().Name, "Emby.Naming.Video.VideoListResolver");
                     if (videoListResolverType != null)
                     {
-                        _isEligibleForMultiVersion = videoListResolverType.GetMethod("IsEligibleForMultiVersion",
+                        _isEligibleForMultiVersion = SafeGetMethod(videoListResolverType, "IsEligibleForMultiVersion",
                             BindingFlags.Static | BindingFlags.NonPublic);
                         
                         if (_isEligibleForMultiVersion != null && Plugin.Instance.DebugMode)
@@ -67,7 +67,7 @@ namespace StrmAssistant.Mod
                     var providerManager = EmbyVersionAdapter.Instance.TryGetType(embyProviders.GetName().Name, "Emby.Providers.Manager.ProviderManager");
                     if (providerManager != null)
                     {
-                        _canRefreshImage = providerManager.GetMethod("CanRefresh", BindingFlags.Instance | BindingFlags.NonPublic);
+                        _canRefreshImage = SafeGetMethod(providerManager, "CanRefresh", BindingFlags.Instance | BindingFlags.NonPublic);
                         
                         if (_canRefreshImage != null && Plugin.Instance.DebugMode)
                         {
@@ -77,7 +77,7 @@ namespace StrmAssistant.Mod
                 }
 
                 // 获取 Series 的方法
-                _addLibrariesToPresentationUniqueKey = typeof(Series).GetMethod("AddLibrariesToPresentationUniqueKey",
+                _addLibrariesToPresentationUniqueKey = SafeGetMethod(typeof(Series), "AddLibrariesToPresentationUniqueKey",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 
                 if (_addLibrariesToPresentationUniqueKey != null && Plugin.Instance.DebugMode)
@@ -92,7 +92,7 @@ namespace StrmAssistant.Mod
                     var itemRefreshService = EmbyVersionAdapter.Instance.TryGetType(embyApi.GetName().Name, "Emby.Api.ItemRefreshService");
                     if (itemRefreshService != null)
                     {
-                        _getRefreshOptions = itemRefreshService.GetMethod("GetRefreshOptions", 
+                        _getRefreshOptions = SafeGetMethod(itemRefreshService, "GetRefreshOptions", 
                             BindingFlags.Instance | BindingFlags.NonPublic);
                         
                         if (_getRefreshOptions != null && Plugin.Instance.DebugMode)
@@ -256,9 +256,11 @@ namespace StrmAssistant.Mod
             var id = Traverse.Create(request).Property("Id").GetValue<string>();
             var item = BaseItem.LibraryManager.GetItemById(id);
 
+            if (item == null) return;
+
             if (item is Series || item is Season)
             {
-                var series = item as Series ?? (item as Season).Series;
+                var series = item as Series ?? (item as Season)?.Series;
                 var seriesTmdbId = series?.GetProviderId(MetadataProviders.Tmdb);
                 var episodeGroupId = series?.GetProviderId(MovieDbEpisodeGroupExternalId.StaticName)?.Trim();
 

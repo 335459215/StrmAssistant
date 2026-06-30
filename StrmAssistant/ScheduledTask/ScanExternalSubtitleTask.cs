@@ -28,7 +28,7 @@ namespace StrmAssistant.ScheduledTask
             _logger.Info("Tier2 Max Concurrent Count: " +
                          Plugin.Instance.MainOptionsStore.GetOptions().GeneralOptions.Tier2MaxConcurrentCount);
 
-            await Task.Yield();
+            await Task.Delay(0).ConfigureAwait(false);
             progress.Report(0);
 
             var persistMediaInfoMode = Plugin.Instance.MediaInfoExtractStore.GetOptions().PersistMediaInfoMode;
@@ -38,7 +38,7 @@ namespace StrmAssistant.ScheduledTask
             var items = Plugin.LibraryApi.FetchPostExtractTaskItems(false);
             _logger.Info("ExternalSubtitle - Number of items: " + items.Count);
 
-            double total = items.Count;
+            double total = items.Count > 0 ? items.Count : 1;
             var index = 0;
             var current = 0;
 
@@ -107,7 +107,7 @@ namespace StrmAssistant.ScheduledTask
                             _logger.Info("ExternalSubtitle - Progress " + currentCount + "/" + total + " - " +
                                          "Task " + taskIndex + ": " + taskItem.Path);
                         }
-                    }, cancellationToken);
+                    });
                     tasks.Add(task);
 
                     // 周期性剔除已完成 task，释放它们捕获的 BaseItem 闭包

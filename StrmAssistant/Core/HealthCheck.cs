@@ -12,7 +12,7 @@ namespace StrmAssistant.Core
     /// </summary>
     public class HealthCheck
     {
-        private static HealthCheck _instance;
+        private static volatile HealthCheck _instance;
         private static readonly object _lock = new object();
         
         private readonly ILogger _logger;
@@ -94,7 +94,7 @@ namespace StrmAssistant.Core
                     ? HealthStatus.Healthy 
                     : HealthStatus.Degraded;
             }
-            catch
+            catch (Exception)
             {
                 return HealthStatus.Unhealthy;
             }
@@ -112,7 +112,7 @@ namespace StrmAssistant.Core
                 }
                 return HealthStatus.Healthy;
             }
-            catch
+            catch (Exception)
             {
                 return HealthStatus.Unhealthy;
             }
@@ -129,7 +129,7 @@ namespace StrmAssistant.Core
                 }
                 return HealthStatus.Healthy;
             }
-            catch
+            catch (Exception)
             {
                 return HealthStatus.Unhealthy;
             }
@@ -143,7 +143,7 @@ namespace StrmAssistant.Core
                 _ = ServiceLocator.Instance;
                 return HealthStatus.Healthy;
             }
-            catch
+            catch (Exception)
             {
                 return HealthStatus.Unhealthy;
             }
@@ -172,7 +172,7 @@ namespace StrmAssistant.Core
                 
                 return HealthStatus.Healthy;
             }
-            catch
+            catch (Exception)
             {
                 return HealthStatus.Unknown;
             }
@@ -197,7 +197,7 @@ namespace StrmAssistant.Core
                 
                 return HealthStatus.Healthy;
             }
-            catch
+            catch (Exception)
             {
                 return HealthStatus.Unknown;
             }
@@ -217,7 +217,7 @@ namespace StrmAssistant.Core
                 
                 return HealthStatus.Healthy;
             }
-            catch
+            catch (Exception)
             {
                 return HealthStatus.Unknown;
             }

@@ -1,6 +1,7 @@
 using HarmonyLib;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
+using StrmAssistant.Core;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,16 +27,32 @@ namespace StrmAssistant.Mod
 
         protected override void OnInitialize()
         {
-            var embyServerImplementationsAssembly = Assembly.Load("Emby.Server.Implementations");
+            var embyServerImplementationsAssembly = EmbyVersionAdapter.Instance.TryLoadAssembly("Emby.Server.Implementations");
+            if (embyServerImplementationsAssembly == null)
+            {
+                Plugin.Instance.Logger.Error("EnableDeepDelete: Failed to load Emby.Server.Implementations");
+                return;
+            }
+
             var libraryManager =
                 embyServerImplementationsAssembly.GetType("Emby.Server.Implementations.Library.LibraryManager");
-            _deleteItem = libraryManager.GetMethod("DeleteItem",
-                BindingFlags.Instance | BindingFlags.Public, null,
-                new[] { typeof(BaseItem), typeof(DeleteOptions), typeof(BaseItem), typeof(bool) }, null);
+            if (libraryManager == null)
+            {
+                Plugin.Instance.Logger.Error("EnableDeepDelete: Failed to resolve LibraryManager type");
+                return;
+            }
+
+            _deleteItem = SafeGetMethod(libraryManager, "DeleteItem",
+                BindingFlags.Instance | BindingFlags.Public, 4);
         }
 
         protected override void Prepare(bool apply)
         {
+            if (_deleteItem == null)
+            {
+                Plugin.Instance.Logger.Warn("EnableDeepDelete: _deleteItem is null, skipping patch");
+                return;
+            }
             PatchUnpatch(PatchTracker, apply, _deleteItem, prefix: nameof(DeleteItemPrefix),
                 finalizer: nameof(DeleteItemFinalizer));
         }
@@ -64,7 +81,8 @@ namespace StrmAssistant.Mod
 
                 if (localMountPaths.Count > 0)
                 {
-                    Task.Run(() => Plugin.LibraryApi.ExecuteDeepDelete(localMountPaths)).ConfigureAwait(false);
+                    Task.Run(() => Plugin.LibraryApi.ExecuteDeepDelete(localMountPaths))
+                        .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"EnableDeepDelete ExecuteDeepDelete failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
                 }
             }
         }

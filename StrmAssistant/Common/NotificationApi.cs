@@ -88,7 +88,7 @@ namespace StrmAssistant.Common
                         Resources.Notification_IntroUpdate_Message, episode.FindSeriesName(), episode.FindSeasonName()),
                     TimeoutMs = 500
                 };
-                await _sessionManager.SendMessageCommand(session.Id, session.Id, message, CancellationToken.None);
+                await _sessionManager.SendMessageCommand(session.Id, session.Id, message, CancellationToken.None).ConfigureAwait(false);
             }
 
             var request = new NotificationRequest
@@ -120,7 +120,7 @@ namespace StrmAssistant.Common
                         Resources.Notification_CreditsUpdate_Message, episode.FindSeriesName(), episode.FindSeasonName()),
                     TimeoutMs = 500
                 };
-                await _sessionManager.SendMessageCommand(session.Id, session.Id, message, CancellationToken.None);
+                await _sessionManager.SendMessageCommand(session.Id, session.Id, message, CancellationToken.None).ConfigureAwait(false);
             }
 
             var request = new NotificationRequest
@@ -154,7 +154,7 @@ namespace StrmAssistant.Common
 
             foreach (var session in sessions)
             {
-                await _sessionManager.SendMessageCommand(session.Id, session.Id, message, CancellationToken.None);
+                await _sessionManager.SendMessageCommand(session.Id, session.Id, message, CancellationToken.None).ConfigureAwait(false);
             }
         }
 

@@ -30,7 +30,7 @@ namespace StrmAssistant.Mod
             var collectionManager =
                 embyServerImplementationsAssembly?.GetType(
                     "Emby.Server.Implementations.Collections.CollectionManager");
-            _ensureLibraryFolder = collectionManager?.GetMethod("EnsureLibraryFolder",
+            _ensureLibraryFolder = SafeGetMethod(collectionManager, "EnsureLibraryFolder",
                 BindingFlags.Instance | BindingFlags.NonPublic);
             var userViewManager =
                 embyServerImplementationsAssembly?.GetType("Emby.Server.Implementations.Library.UserViewManager");

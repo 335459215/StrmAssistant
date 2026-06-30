@@ -42,10 +42,10 @@ namespace StrmAssistant.Mod
         public static EnableDeepDelete EnableDeepDelete;
         public static SuppressPluginUpdate SuppressPluginUpdate;
 
-        private static readonly ConcurrentDictionary<Tuple<Type, string>, HarmonyMethod> HarmonyMethodCache 
-            = new ConcurrentDictionary<Tuple<Type, string>, HarmonyMethod>();
-        private static readonly ConcurrentDictionary<Tuple<Type, string>, MethodInfo> MethodInfoCache 
-            = new ConcurrentDictionary<Tuple<Type, string>, MethodInfo>();
+        private static readonly ConcurrentDictionary<(Type, string), HarmonyMethod> HarmonyMethodCache
+        = new ConcurrentDictionary<(Type, string), HarmonyMethod>();
+        private static readonly ConcurrentDictionary<(Type, string), MethodInfo> MethodInfoCache
+            = new ConcurrentDictionary<(Type, string), MethodInfo>();
 
         public static void Initialize()
         {
@@ -126,6 +126,8 @@ namespace StrmAssistant.Mod
         
         public static bool IsModSuccess()
         {
+            lock (_patchLock)
+            {
             var supportedPatches = PatchTrackerList.Where(p => p.IsSupported).ToList();
             
             // 定义可选功能补丁（这些功能不可用时不应该影响整体状态）
@@ -222,6 +224,7 @@ namespace StrmAssistant.Mod
             var result = failedCorePatches.Count == 0;
             _lastModSuccessStatus = result;
             return result;
+            }
         }
 
         public static void CopyProperty(object source, object target, string propertyName)
@@ -526,9 +529,9 @@ namespace StrmAssistant.Mod
         {
             if (string.IsNullOrEmpty(patchMethod)) return null;
 
-            return HarmonyMethodCache.GetOrAdd(Tuple.Create(patchType, patchMethod), tuple =>
+            return HarmonyMethodCache.GetOrAdd((patchType, patchMethod), key =>
             {
-                var methodInfo = GetMethodInfo(tuple.Item1, tuple.Item2);
+                var methodInfo = GetMethodInfo(key.Item1, key.Item2);
                 return methodInfo != null ? new HarmonyMethod(methodInfo) : null;
             });
         }
@@ -537,8 +540,8 @@ namespace StrmAssistant.Mod
         {
             if (string.IsNullOrEmpty(patchMethod)) return null;
 
-            return MethodInfoCache.GetOrAdd(Tuple.Create(patchType, patchMethod),
-                tuple => AccessTools.Method(tuple.Item1, tuple.Item2));
+            return MethodInfoCache.GetOrAdd((patchType, patchMethod),
+                key => AccessTools.Method(key.Item1, key.Item2));
         }
         
         /// <summary>
@@ -631,7 +634,10 @@ namespace StrmAssistant.Mod
             _lastStatusLog = null;
             HarmonyMod = null;
 
-            // 5. 清空补丁实例引用
+            // 5. 清空补丁实例引用并清理各Patch类的静态状态
+            // 使用类型限定调用静态 Cleanup，因为实例字段名与类型名冲突
+            global::StrmAssistant.Mod.EnableImageCapture.Cleanup();
+            global::StrmAssistant.Mod.EnhanceChineseSearch.Cleanup();
             EnableImageCapture = null;
             EnhanceChineseSearch = null;
             MergeMultiVersion = null;

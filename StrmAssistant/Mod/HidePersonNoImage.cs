@@ -33,7 +33,7 @@ namespace StrmAssistant.Mod
             var dtoService =
                 embyServerImplementationsAssembly?.GetType("Emby.Server.Implementations.Dto.DtoService");
             _attachPeople =
-                dtoService?.GetMethod("AttachPeople", BindingFlags.NonPublic | BindingFlags.Instance);
+                SafeGetMethod(dtoService, "AttachPeople", BindingFlags.NonPublic | BindingFlags.Instance);
         }
 
         protected override void Prepare(bool apply)

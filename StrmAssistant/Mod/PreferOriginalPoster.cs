@@ -44,7 +44,7 @@ namespace StrmAssistant.Mod
         private static MethodInfo _addLocalImage;
         private static MethodInfo _getLocalFiles;
         private static MethodInfo _populateSeasonImagesFromSeasonOrSeriesFolder;
-        private static bool _localImageStubsReady;
+        private static volatile bool _localImageStubsReady;
 
         private static readonly ConcurrentDictionary<string, ContextItem> CurrentItemsByTmdbId =
             new ConcurrentDictionary<string, ContextItem>();
@@ -78,17 +78,15 @@ namespace StrmAssistant.Mod
             if (_movieDbAssembly != null)
             {
                 var movieDbImageProvider = _movieDbAssembly.GetType("MovieDb.MovieDbImageProvider");
-                _getMovieInfo = movieDbImageProvider.GetMethod("GetMovieInfo",
-                    BindingFlags.Instance | BindingFlags.NonPublic, null,
-                    new[] { typeof(BaseItem), typeof(string), typeof(IJsonSerializer), typeof(CancellationToken) },
-                    null);
+                _getMovieInfo = SafeGetMethod(movieDbImageProvider, "GetMovieInfo",
+                    BindingFlags.Instance | BindingFlags.NonPublic, 4);
 
                 var movieDbSeriesProvider = _movieDbAssembly.GetType("MovieDb.MovieDbSeriesProvider");
-                _ensureSeriesInfo = movieDbSeriesProvider.GetMethod("EnsureSeriesInfo",
+                _ensureSeriesInfo = SafeGetMethod(movieDbSeriesProvider, "EnsureSeriesInfo",
                     BindingFlags.Instance | BindingFlags.NonPublic);
 
                 var movieDbProviderBase = _movieDbAssembly.GetType("MovieDb.MovieDbProviderBase");
-                _getBackdrops = movieDbProviderBase.GetMethod("GetBackdrops",
+                _getBackdrops = SafeGetMethod(movieDbProviderBase, "GetBackdrops",
                     BindingFlags.Instance | BindingFlags.NonPublic);
             }
             else
@@ -103,10 +101,10 @@ namespace StrmAssistant.Mod
             if (_tvdbAssembly != null)
             {
                 var tvdbMovieProvider = _tvdbAssembly.GetType("Tvdb.TvdbMovieProvider");
-                _ensureMovieInfoTvdb = tvdbMovieProvider.GetMethod("EnsureMovieInfo",
+                _ensureMovieInfoTvdb = SafeGetMethod(tvdbMovieProvider, "EnsureMovieInfo",
                     BindingFlags.NonPublic | BindingFlags.Instance);
                 var tvdbSeriesProvider = _tvdbAssembly.GetType("Tvdb.TvdbSeriesProvider");
-                _ensureSeriesInfoTvdb = tvdbSeriesProvider.GetMethod("EnsureSeriesInfo",
+                _ensureSeriesInfoTvdb = SafeGetMethod(tvdbSeriesProvider, "EnsureSeriesInfo",
                     BindingFlags.NonPublic | BindingFlags.Instance);
             }
             else
@@ -118,31 +116,21 @@ namespace StrmAssistant.Mod
             {
                 var embyProvidersAssembly = Assembly.Load("Emby.Providers");
                 var providerManager = embyProvidersAssembly?.GetType("Emby.Providers.Manager.ProviderManager");
-                _getAvailableRemoteImages = providerManager?.GetMethod("GetAvailableRemoteImages",
-                    BindingFlags.Instance | BindingFlags.Public, null,
-                    new[]
-                    {
-                        typeof(BaseItem), typeof(LibraryOptions), typeof(RemoteImageQuery),
-                        typeof(IDirectoryService), typeof(CancellationToken)
-                    }, null);
+                _getAvailableRemoteImages = SafeGetMethod(providerManager, "GetAvailableRemoteImages",
+                    BindingFlags.Instance | BindingFlags.Public, 5);
 
                 var embyLocalMetadata = Assembly.Load("Emby.LocalMetadata");
                 var localImageProvider = embyLocalMetadata?.GetType("Emby.LocalMetadata.Images.LocalImageProvider");
-                _addLocalImage = localImageProvider?.GetMethod("AddImage",
-                    BindingFlags.Instance | BindingFlags.NonPublic,
-                    new[]
-                    {
-                        typeof(FileSystemMetadata[]), typeof(List<LocalImageInfo>), typeof(string), typeof(ImageType)
-                    });
+                _addLocalImage = SafeGetMethod(localImageProvider, "AddImage",
+                    BindingFlags.Instance | BindingFlags.NonPublic, 4);
                 var addLocalImagePatched = false;
                 if (_addLocalImage != null)
                 {
                     addLocalImagePatched = ReversePatch(PatchTracker, _addLocalImage, nameof(AddLocalImageStub),
                         suppressWarnings: false);
                 }
-                _getLocalFiles = localImageProvider?.GetMethod("GetFiles",
-                    BindingFlags.Instance | BindingFlags.NonPublic,
-                    new[] { typeof(BaseItem), typeof(LibraryOptions), typeof(bool), typeof(IDirectoryService) });
+                _getLocalFiles = SafeGetMethod(localImageProvider, "GetFiles",
+                    BindingFlags.Instance | BindingFlags.NonPublic, 4);
                 var getLocalFilesPatched = false;
                 if (_getLocalFiles != null)
                 {
@@ -274,7 +262,7 @@ namespace StrmAssistant.Mod
             {
                 movieData = Traverse.Create(__result).Property("Result").GetValue();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }
@@ -305,7 +293,7 @@ namespace StrmAssistant.Mod
             {
                 seriesInfo = Traverse.Create(__result).Property("Result").GetValue();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }
@@ -339,7 +327,7 @@ namespace StrmAssistant.Mod
             {
                 movieData = Traverse.Create(__result).Property("Result").GetValue();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }
@@ -371,7 +359,7 @@ namespace StrmAssistant.Mod
             {
                 seriesData = Traverse.Create(__result).Property("Result").GetValue();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }
@@ -435,9 +423,9 @@ namespace StrmAssistant.Mod
 
             try
             {
-                result = __result.Result;
+                result = __result.GetAwaiter().GetResult();
             }
-            catch
+            catch (Exception)
             {
                 // ignored
             }

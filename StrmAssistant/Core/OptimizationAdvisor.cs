@@ -12,7 +12,7 @@ namespace StrmAssistant.Core
     /// </summary>
     public class OptimizationAdvisor
     {
-        private static OptimizationAdvisor _instance;
+        private static volatile OptimizationAdvisor _instance;
         private static readonly object _lock = new object();
         
         private readonly ILogger _logger;
@@ -114,7 +114,7 @@ namespace StrmAssistant.Core
                     });
                 }
             }
-            catch
+            catch (Exception)
             {
                 // FastReflection不可用
             }
@@ -168,7 +168,7 @@ namespace StrmAssistant.Core
                     }
                 }
             }
-            catch
+            catch (Exception)
             {
                 // PerformanceMonitor不可用
             }
@@ -205,7 +205,7 @@ namespace StrmAssistant.Core
                     });
                 }
             }
-            catch
+            catch (Exception)
             {
                 // 获取内存信息失败
             }
@@ -256,7 +256,7 @@ namespace StrmAssistant.Core
                     });
                 }
             }
-            catch
+            catch (Exception)
             {
                 // HealthCheck不可用
             }
@@ -301,7 +301,7 @@ namespace StrmAssistant.Core
                     });
                 }
             }
-            catch
+            catch (Exception)
             {
                 // PatchManager不可用
             }

@@ -42,6 +42,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using static StrmAssistant.Options.ExperienceEnhanceOptions;
 using static StrmAssistant.Options.GeneralOptions;
@@ -52,7 +53,7 @@ namespace StrmAssistant
 {
     public class Plugin : BasePlugin, IHasThumbImage, IHasUIPages, IDisposable
     {
-        private List<IPluginUIPageController> _pages;
+        private readonly Lazy<List<IPluginUIPageController>> _pagesLazy;
         public readonly PluginOptionsStore MainOptionsStore;
         public readonly MediaInfoExtractOptionsStore MediaInfoExtractStore;
         public readonly MetadataEnhanceOptionsStore MetadataEnhanceStore;
@@ -78,6 +79,8 @@ namespace StrmAssistant
         private static readonly string _cachedVersion =
             Assembly.GetExecutingAssembly().GetName().Version?.ToString();
 
+        private volatile bool _coreInitFailed;
+
         public readonly ILogger Logger;
         public readonly IApplicationHost ApplicationHost;
         public readonly IApplicationPaths ApplicationPaths;
@@ -87,6 +90,7 @@ namespace StrmAssistant
         private readonly IUserDataManager _userDataManager;
         private readonly IProviderManager _providerManager;
         private readonly IFileSystem _fileSystem;
+        internal readonly IItemRepository ItemRepository;
         private readonly ITaskManager _taskManager;
         private readonly ISessionManager _sessionManager;
         private readonly IServerConfigurationManager _configurationManager;
@@ -108,13 +112,10 @@ namespace StrmAssistant
             Logger.Info("Plugin is getting loaded.");
             ApplicationHost = applicationHost;
             ApplicationPaths = applicationPaths;
+            ItemRepository = itemRepository;
 
             // Observe unobserved task exceptions to prevent process crash
-            TaskScheduler.UnobservedTaskException += (s, e) =>
-            {
-                Logger.Error("Unobserved task exception: {0}", e.Exception?.InnerException?.Message ?? e.Exception?.Message ?? "unknown");
-                e.SetObserved();
-            };
+            TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
             
             // 初始化核心架构组件
             try
@@ -136,8 +137,14 @@ namespace StrmAssistant
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to initialize core architecture: {ex.Message}");
+                Logger.Error($"CRITICAL: Failed to initialize core architecture [{ex.GetType().Name}]: {ex.Message}");
                 Logger.Error(ex.StackTrace);
+                _coreInitFailed = true;
+            }
+
+            if (_coreInitFailed)
+            {
+                Logger.Warn("Plugin will operate in degraded mode — Harmony patches skipped");
             }
 
             _libraryManager = libraryManager;
@@ -157,6 +164,15 @@ namespace StrmAssistant
             IntroSkipStore = new IntroSkipOptionsStore(applicationHost, Logger, Name + "_" + nameof(IntroSkipOptions));
             ExperienceEnhanceStore = new ExperienceEnhanceOptionsStore(applicationHost, Logger,
                 Name + "_" + nameof(ExperienceEnhanceOptions));
+
+            // Lazy<T> 线程安全的 UI 页面初始化
+            _pagesLazy = new Lazy<List<IPluginUIPageController>>(() =>
+                new List<IPluginUIPageController>
+                {
+                    new MainPageController(GetPluginInfo(), _libraryManager, MainOptionsStore,
+                        MediaInfoExtractStore, MetadataEnhanceStore, IntroSkipStore, ExperienceEnhanceStore)
+                }, LazyThreadSafetyMode.ExecutionAndPublication);
+
             InitializeOptionCache();
 
             Resources.Culture = DefaultUICulture;
@@ -167,14 +183,15 @@ namespace StrmAssistant
             {
                 DebugMode = true;
                 // 保存配置确保第二个 Plugin 实例初始化时也能读到
-                try { MainOptionsStore.SavePluginOptionsSuppress(); } catch { }
+                try { MainOptionsStore.SavePluginOptionsSuppress(); }
+                catch (Exception ex) { Logger.Warn($"Failed to save DebugMode config: {ex.Message}"); }
             }
             else if (Debugger.IsAttached)
             {
                 DebugMode = true;
             }
 
-            if (IsModSupported)
+            if (IsModSupported && !_coreInitFailed)
             {
                 Logger.Info("Initializing Harmony Mod patches...");
                 PatchManager.Initialize();
@@ -224,7 +241,7 @@ namespace StrmAssistant
             }
             catch (Exception ex)
             {
-                Logger.Warn($"Health check failed: {ex.Message}");
+                Logger.Warn($"Health check failed [{ex.GetType().Name}]: {ex.Message}");
             }
             
             // 初始化优化建议系统
@@ -257,7 +274,7 @@ namespace StrmAssistant
             }
             catch (Exception ex)
             {
-                Logger.Warn($"MemoryCleaner initialization failed: {ex.Message}");
+                Logger.Warn($"MemoryCleaner initialization failed [{ex.GetType().Name}]: {ex.Message}");
             }
 
             // 启动日志轮循管理器（防止单个日志文件无限增长）
@@ -274,7 +291,7 @@ namespace StrmAssistant
             }
             catch (Exception ex)
             {
-                Logger.Warn($"LogRotationManager initialization failed: {ex.Message}");
+                Logger.Warn($"LogRotationManager initialization failed [{ex.GetType().Name}]: {ex.Message}");
             }
 
             // 启动定期性能报告（仅在DebugMode下，每60分钟一次）
@@ -422,6 +439,12 @@ namespace StrmAssistant
             }
         }
 
+        private static void OnUnobservedTaskException(object s, UnobservedTaskExceptionEventArgs e)
+        {
+            ThreadLogHelper.Log("Error", $"Unobserved task exception: {e.Exception?.InnerException?.Message ?? e.Exception?.Message ?? "unknown"}");
+            e.SetObserved();
+        }
+
         private async void OnItemAdded(object sender, ItemChangeEventArgs e)
         {
             try
@@ -446,7 +469,7 @@ namespace StrmAssistant
                             "OnItemAdded Overwrite").ContinueWith(t =>
                         {
                             if (t.Exception != null)
-                                Logger.Error("OnItemAdded SerializeMediaInfo failed: {0}", t.Exception.InnerExceptions[0].Message);
+                                ThreadLogHelper.Log("Error", $"OnItemAdded SerializeMediaInfo failed: {t.Exception.InnerExceptions[0].Message}");
                         }, TaskContinuationOptions.OnlyOnFaulted);
                     }
                 }
@@ -497,8 +520,11 @@ namespace StrmAssistant
             }
             catch (Exception ex)
             {
-                Logger.Error($"OnItemAdded unhandled exception for '{e.Item?.Name}': {ex.Message}");
-                Logger.Debug(ex.StackTrace);
+                // async void 事件处理器：未捕获异常会崩溃进程，必须记录完整信息
+                ThreadLogHelper.Log("Error", $"OnItemAdded unhandled exception for '{e.Item?.Name}' [{ex.GetType().Name}]: {ex.Message}");
+                ThreadLogHelper.Log("Error", $"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                    ThreadLogHelper.Log("Debug", $"OnItemAdded inner exception: {ex.InnerException.Message}");
             }
         }
 
@@ -525,7 +551,8 @@ namespace StrmAssistant
             {
                 if (e.Item is Season season && season.IndexNumber > 0)
                 {
-                    MetadataApi.UpdateSeriesPeople(season.Parent as Series);
+                    if (season.Parent is Series parentSeries)
+                        MetadataApi.UpdateSeriesPeople(parentSeries);
                 }
                 else if (e.Item is Series series)
                 {
@@ -611,6 +638,9 @@ namespace StrmAssistant
         {
             try
             {
+                // 先卸载 Harmony 补丁，再释放资源 — 避免补丁逻辑访问已释放的资源
+                PatchManager.CleanupPatches();
+
                 _libraryManager.ItemAdded -= OnItemAdded;
                 _libraryManager.ItemUpdated -= OnItemUpdated;
                 _libraryManager.ItemRemoved -= OnItemRemoved;
@@ -621,17 +651,17 @@ namespace StrmAssistant
                 _userManager.UserConfigurationUpdated -= OnUserConfigurationUpdated;
                 _userDataManager.UserDataSaved -= OnUserDataSaved;
                 CollectionFolder.LibraryOptionsUpdated -= OnLibraryOptionsUpdated;
+                TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
 
                 QueueManager.Dispose();
                 MemoryCleaner.DisposeInstance();
                 LogRotationManager.DisposeInstance();
                 PerformanceReporter.DisposeInstance();
                 PlaySessionMonitor?.Dispose();
-                PatchManager.CleanupPatches();
                 ShortcutMenuHelper.Dispose();
                 ScriptInjectHelper.Dispose();
 
-                _pages?.Clear();
+                if (_pagesLazy.IsValueCreated) _pagesLazy.Value.Clear();
 
                 if (notifyAdmins && MainOptionsStore.GetOptions().ModOptions.EnhanceChineseSearch)
                 {
@@ -641,7 +671,7 @@ namespace StrmAssistant
             }
             catch (Exception ex)
             {
-                Logger?.Warn($"Plugin cleanup failed: {ex.Message}");
+                Logger?.Warn($"Plugin cleanup failed [{ex.GetType().Name}]: {ex.Message}");
             }
         }
 
@@ -659,7 +689,7 @@ namespace StrmAssistant
 
         public CultureInfo DefaultUICulture => new CultureInfo("zh-CN");
 
-        public bool DebugMode;
+        public volatile bool DebugMode;
 
         /// <summary>
         /// 当日志文件超过大小限制时，由 LogRotationManager 调用此方法关闭调试日志
@@ -696,16 +726,7 @@ namespace StrmAssistant
         {
             get
             {
-                if (_pages == null)
-                {
-                    _pages = new List<IPluginUIPageController>
-                    {
-                        new MainPageController(GetPluginInfo(), _libraryManager, MainOptionsStore,
-                            MediaInfoExtractStore, MetadataEnhanceStore, IntroSkipStore, ExperienceEnhanceStore)
-                    };
-                }
-
-                return _pages.AsReadOnly();
+                return _pagesLazy.Value.AsReadOnly();
             }
         }
     }

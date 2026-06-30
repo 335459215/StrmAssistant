@@ -200,24 +200,24 @@ namespace StrmAssistant.Core
                         workingSetBefore = p.WorkingSet64;
                     }
                 }
-                catch
+                catch (Exception)
                 {
                     // ignore
                 }
 
-                // 1) 强制完整 GC，并尝试压缩 LOH（需 .NET 4.5.1+）
+                // 1) 请求 GC，使用 Optimized 而非 Forced 避免不必要的全线程暂停
                 try
                 {
                     GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
                 }
-                catch
+                catch (Exception)
                 {
                     // ignore - 某些运行时不支持
                 }
 
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Optimized, true, true);
                 GC.WaitForPendingFinalizers();
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Optimized, true, true);
 
                 // 2) 把已释放的内存真正归还给操作系统
                 long workingSetAfter = workingSetBefore;
@@ -255,7 +255,7 @@ namespace StrmAssistant.Core
                         workingSetAfter = p.WorkingSet64;
                     }
                 }
-                catch
+                catch (Exception)
                 {
                     // ignore
                 }

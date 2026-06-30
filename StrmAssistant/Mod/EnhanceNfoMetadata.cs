@@ -27,6 +27,7 @@ namespace StrmAssistant.Mod
 
         private static readonly XmlReaderSettings ReaderSettings = new XmlReaderSettings
         {
+            DtdProcessing = DtdProcessing.Prohibit,
             ValidationType = ValidationType.None,
             Async = true,
             CheckCharacters = false,
@@ -67,7 +68,7 @@ namespace StrmAssistant.Mod
                         typeof(ILogger), typeof(IConfigurationManager), typeof(IProviderManager),
                         typeof(IFileSystem)
                     }, null);
-                _getPersonFromXmlNode = genericBaseNfoParserVideo.GetMethod("GetPersonFromXmlNode",
+                _getPersonFromXmlNode = SafeGetMethod(genericBaseNfoParserVideo, "GetPersonFromXmlNode",
                     BindingFlags.NonPublic | BindingFlags.Instance);
             }
             else
@@ -142,14 +143,15 @@ namespace StrmAssistant.Mod
         [HarmonyPostfix]
         private static void GetPersonFromXmlNodePostfix(XmlReader reader, Task<PersonInfo> __result)
         {
-            Task.Run(async () => await SetImageUrlAsync(__result)).ConfigureAwait(false);
+            Task.Run(async () => await SetImageUrlAsync(__result).ConfigureAwait(false))
+                .ContinueWith(t => { if (t.IsFaulted) ThreadLog("Error", $"EnhanceNfoMetadata SetImageUrlAsync failed: {t.Exception?.InnerException?.Message ?? t.Exception?.Message}"); }, TaskScheduler.Default);
         }
 
         private static async Task SetImageUrlAsync(Task<PersonInfo> personInfoTask)
         {
             try
             {
-                var personInfo = await personInfoTask;
+                var personInfo = await personInfoTask.ConfigureAwait(false);
 
                 var personContent = PersonContent.Value;
                 PersonContent.Value = null;

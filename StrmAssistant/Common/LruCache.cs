@@ -10,7 +10,7 @@ namespace StrmAssistant.Common
         private readonly Dictionary<string, LinkedListNode<KeyValuePair<string, object>>> _cacheMap;
         private readonly LinkedList<KeyValuePair<string, object>> _orderList;
         private readonly ReaderWriterLockSlim _lock = new ReaderWriterLockSlim();
-        private bool _disposed;
+        private volatile bool _disposed;
 
         public LruCache(int capacity = 20)
         {
